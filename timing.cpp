@@ -72,9 +72,6 @@ struct TimerData {
 
 Timer::Timer() : data(new TimerData())
 {
-#ifndef NDEBUG
-	int r = 
-#endif
 	clock_getres(CLOCK_MONOTONIC, &data->freq);
 	//printf("Timer rsolution is %ldns\n",freq.tv_nsec);
 	clock_gettime(CLOCK_MONOTONIC, &data->begin);

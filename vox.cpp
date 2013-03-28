@@ -4,6 +4,7 @@
 #include <cassert>
 #include <algorithm>
 #include <SDL/SDL.h>
+#include "timing.h"
 
 using namespace std;
 
@@ -34,7 +35,7 @@ bool mousemove=false;
 bool moves=true;
 
 // Position
-const float rotatespeed = 360, movespeed = 8;  
+const float rotatespeed = 360, movespeed = 20;  
 float px=0, py=0, pz=-16;
 float phi, rho;
 const float pid180=3.1415926535/180;
@@ -262,6 +263,7 @@ void raster() {
 
 // Draw anything on the screen
 void draw() {
+    Timer t;
     if (moves) {
         SDL_FillRect(screen,NULL, 0x000000);
         sphi = sin(phi*pid180);
@@ -270,8 +272,11 @@ void draw() {
         crho = cos(rho*pid180);
         M.draw(-px,-py,-pz,8);
         SDL_Flip (screen);
+        printf("%4.2f\n", t.elapsed());
     }
-    SDL_Delay(10);
+    if (t.elapsed()<=40) {
+        SDL_Delay((int)(50-t.elapsed()));
+    }
 }
 
 void init () {
