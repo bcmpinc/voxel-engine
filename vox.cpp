@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
 
         Timer t;
         if (moves) {
-            SDL_FillRect(screen,NULL, 0x000000);
+            //SDL_FillRect(screen,NULL, 0x000000);
             draw();
             SDL_Flip (screen);
             printf("%4.2f\n", t.elapsed());

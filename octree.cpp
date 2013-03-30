@@ -1,14 +1,18 @@
 #include <cstdio>
 #include <cassert>
+#include <algorithm>
 #include "common.h"
+
+using std::max;
+using std::min;
 
 float * z_buf;
 int * pixs2;
 
 inline void pix(int x, int y, float z, int c) {
-    int i = x+y*SCREEN_WIDTH;
-    if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT && z_buf[i]>z) {
-        pixs[i] = c;
+    int i = x+(y+1)*(SCREEN_WIDTH+2)+1;
+    if (x>=-1 && y>=-1 && x<SCREEN_WIDTH+1 && y<SCREEN_HEIGHT+1 && z_buf[i]>z) {
+        pixs2[i] = c;
         z_buf[i] = z;
     }
 }
@@ -19,6 +23,10 @@ inline void pix(float x, float y, float z, int c) {
 inline int rgb(int r, int g, int b) {
     return CLAMP(r)<<16|CLAMP(g)<<8|CLAMP(b);
 }
+inline int rgb(float r, float g, float b) {
+    return rgb((int)(r+0.5),(int)(g+0.5),(int)(b+0.5));
+}
+
 
 /** A node in an octree. */
 struct octree {
@@ -46,7 +54,7 @@ struct octree {
         for (int i=0; i<8; i++) {
             if(c[i]) c[i]->average();
         }
-        int r=0, g=0, b=0, n=0;
+        float r=0, g=0, b=0, n=0;
         for (int i=0; i<8; i++) {
             if(c[i]) {
                 int v = c[i]->avgcolor;
@@ -56,10 +64,7 @@ struct octree {
                 n++;
             }
         }
-        r += n/2;
-        g += n/2;
-        b += n/2;
-        avgcolor = rgb(r,g,b);
+        avgcolor = rgb(r/n,g/n,b/n);
     }
     void draw(float x, float y, float z, float scale) {
         scale/=2;
@@ -111,13 +116,45 @@ static void load_voxel(const char * filename) {
 /** Initialize scene. */
 void init () {
     load_voxel("sign.vxl");
-    z_buf = new float[SCREEN_HEIGHT*SCREEN_WIDTH];
-    pixs2 = new int[SCREEN_HEIGHT*SCREEN_WIDTH];
+    z_buf = new float[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
+    pixs2 = new int[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
+}
+
+void holefill() {
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            int i = x+1+(y+1)*(SCREEN_WIDTH+2);
+            float depth = min(z_buf[i],min(max(z_buf[i-1],z_buf[i+1]),max(z_buf[i-SCREEN_WIDTH-2],z_buf[i+SCREEN_WIDTH+2])));
+            if (z_buf[i]<depth*1.05) {
+                pixs[x+y*SCREEN_WIDTH] = pixs2[i];
+            } else {
+                float r=0,g=0,b=0,n=0;
+                for (int y2=y;y2<=y+2;y2++) {
+                    for (int x2=x;x2<=x+2;x2++) {
+                        int j = x2 + y2*(SCREEN_WIDTH+2);
+                        if (depth*0.95<z_buf[j] && z_buf[j]<depth*1.05) {
+                            n++;
+                            int v = pixs2[j];
+                            r += (v&0xff0000>>16);
+                            g += (v&0xff00>>8);
+                            b += (v&0xff);
+                            n++;
+                        }
+                    }
+                }
+                pixs[x+y*SCREEN_WIDTH] = 0xff00ff; //rgb(r/n,g/n,b/n);
+            }
+        }
+    }
 }
 
 /** Draw anything on the screen. */
 void draw() {
-    for (int i = 0; i<SCREEN_HEIGHT*SCREEN_WIDTH; i++) z_buf[i] = 1e30f;
+    for (int i = 0; i<(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2); i++) {
+      z_buf[i] = 1e30f;
+      pixs2[i] = 0;
+    }
     M.draw(-pos.x,-pos.y,-pos.z,8);
+    holefill();
 }
 
