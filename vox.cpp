@@ -4,6 +4,7 @@
 #include <cassert>
 #include <algorithm>
 #include <SDL/SDL.h>
+#include <SDL/SDL_main.h>
 #include "timing.h"
 
 using namespace std;
