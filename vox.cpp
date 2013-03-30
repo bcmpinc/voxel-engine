@@ -25,6 +25,7 @@ class button {
     public:
     enum {
         W, A, S, D,
+        SPACE, C,
         
         STATES
     };
@@ -64,7 +65,11 @@ void pollevent() {
                 case SDLK_d:
                     button_state[button::D] = state;
                     break;
+                case SDLK_c:
+                    button_state[button::C] = state;
+                    break;
                 case SDLK_SPACE:
+                    button_state[button::SPACE] = state;
                     break;
                 default:
                     break;
@@ -119,6 +124,14 @@ void sim() {
     if (button_state[button::D]) {
         pos.x += pos.cphi * dist;
         pos.z += pos.sphi * dist;
+        moves=true;
+    }
+    if (button_state[button::C]) {
+        pos.y -= dist;
+        moves=true;
+    }
+    if (button_state[button::SPACE]) {
+        pos.y += dist;
         moves=true;
     }
 }

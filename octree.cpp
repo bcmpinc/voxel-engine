@@ -2,12 +2,18 @@
 #include <cassert>
 #include "common.h"
 
-inline void pix(int x, int y, int c) {
-  if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT)
-    pixs[x+y*SCREEN_WIDTH] = c;
+float * z_buf;
+int * pixs2;
+
+inline void pix(int x, int y, float z, int c) {
+    int i = x+y*SCREEN_WIDTH;
+    if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT && z_buf[i]>z) {
+        pixs[i] = c;
+        z_buf[i] = z;
+    }
 }
-inline void pix(double x, double y, int c) {
-    pix((int)x,(int)y, c);
+inline void pix(float x, float y, float z, int c) {
+    pix((int)x,(int)y, z, c);
 }
 #define CLAMP(x) (x<0?0:x>255?255:x)
 inline int rgb(int r, int g, int b) {
@@ -65,17 +71,17 @@ struct octree {
             }
         }
         if (leaf) {
-            if (scale > 0.02) {
+            if (scale > 0.05) {
                 for (int i=0; i<8; i++) {
                     draw(x+(i&4?scale:-scale),y+(i&2?scale:-scale),z+(i&1?scale:-scale), scale);
                 }
             } else {
-                double nx =   x*pos.cphi + z*pos.sphi;
-                double nz = - x*pos.sphi + z*pos.cphi;
-                double ny =   y*pos.crho -nz*pos.srho;
-                        z =   y*pos.srho +nz*pos.crho;
+                float nx =   x*pos.cphi + z*pos.sphi;
+                float nz = - x*pos.sphi + z*pos.cphi;
+                float ny =   y*pos.crho -nz*pos.srho;
+                       z =   y*pos.srho +nz*pos.crho;
                 if (z>0)
-                    pix(nx*SCREEN_HEIGHT/z+SCREEN_WIDTH/2,-ny*SCREEN_HEIGHT/z+SCREEN_HEIGHT/2, avgcolor);
+                    pix(nx*SCREEN_HEIGHT/z+SCREEN_WIDTH/2,-ny*SCREEN_HEIGHT/z+SCREEN_HEIGHT/2, z, avgcolor);
             }
         }
     }
@@ -102,11 +108,16 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
-// Draw anything on the screen
+/** Initialize scene. */
+void init () {
+    load_voxel("sign.vxl");
+    z_buf = new float[SCREEN_HEIGHT*SCREEN_WIDTH];
+    pixs2 = new int[SCREEN_HEIGHT*SCREEN_WIDTH];
+}
+
+/** Draw anything on the screen. */
 void draw() {
+    for (int i = 0; i<SCREEN_HEIGHT*SCREEN_WIDTH; i++) z_buf[i] = 1e30f;
     M.draw(-pos.x,-pos.y,-pos.z,8);
 }
 
-void init () {
-    load_voxel("sign.vxl");
-}
