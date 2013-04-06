@@ -1,4 +1,5 @@
-LDLIBS=-lmingw32 -lSDLmain -lSDL
+#LDLIBS=-lmingw32 -lSDLmain -lSDL
+LDLIBS=-lSDL
 CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
 
 SOURCE = vox timing octree
