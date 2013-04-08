@@ -35,7 +35,8 @@ static bool mousemove=false;
 static bool moves=true;
 
 // Position
-static const float rotatespeed = 360, movespeed = 20;  
+static const int MILLISECONDS_PER_FRAME = 50;
+static const float rotatespeed = 180, movespeed = 10;  
 static float phi, rho;
 static const float pid180=3.1415926535/180;
 
@@ -86,6 +87,8 @@ void pollevent() {
             if (mousemove) {
                 phi -= event.motion.xrel*0.3;
                 rho -= event.motion.yrel*0.3;
+                if (rho<-90) rho=-90;
+                if (rho>90) rho=90;
                 moves=true;
             }
             break;
@@ -175,8 +178,8 @@ int main(int argc, char *argv[]) {
             SDL_Flip (screen);
             printf("%4.2f\n", t.elapsed());
         }
-        if (t.elapsed()<=40) {
-            SDL_Delay((int)(50-t.elapsed()));
+        if (t.elapsed()-10<=MILLISECONDS_PER_FRAME) {
+            SDL_Delay((int)(MILLISECONDS_PER_FRAME-t.elapsed()));
         }
         sim();
         pollevent();

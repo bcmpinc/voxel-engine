@@ -51,15 +51,20 @@ struct octree {
         }
     }
     void average() {
+        bool leaf=true;
         for (int i=0; i<8; i++) {
-            if(c[i]) c[i]->average();
+            if(c[i]) {
+                c[i]->average();
+                leaf = false;
+            }
         }
+        if (leaf) return;
         float r=0, g=0, b=0, n=0;
         for (int i=0; i<8; i++) {
             if(c[i]) {
                 int v = c[i]->avgcolor;
-                r += (v&0xff0000>>16);
-                g += (v&0xff00>>8);
+                r += (v&0xff0000)>>16;
+                g += (v&0xff00)>>8;
                 b += (v&0xff);
                 n++;
             }
@@ -69,25 +74,21 @@ struct octree {
     void draw(float x, float y, float z, float scale) {
         scale/=2;
         bool leaf=true;
-        for (int i=0; i<8; i++) {
-            if(c[i]) {
-                c[i]->draw(x+(i&4?scale:-scale),y+(i&2?scale:-scale),z+(i&1?scale:-scale), scale);
-                leaf = false;
+        if (x*x+y*y+z*z<1e6*scale*scale) {
+            for (int i=0; i<8; i++) {
+                if(c[i]) {
+                    c[i]->draw(x+(i&4?scale:-scale),y+(i&2?scale:-scale),z+(i&1?scale:-scale), scale);
+                    leaf = false;
+                }
             }
         }
         if (leaf) {
-            if (scale > 0.05) {
-                for (int i=0; i<8; i++) {
-                    draw(x+(i&4?scale:-scale),y+(i&2?scale:-scale),z+(i&1?scale:-scale), scale);
-                }
-            } else {
-                float nx =   x*pos.cphi + z*pos.sphi;
-                float nz = - x*pos.sphi + z*pos.cphi;
-                float ny =   y*pos.crho -nz*pos.srho;
-                       z =   y*pos.srho +nz*pos.crho;
-                if (z>0)
-                    pix(nx*SCREEN_HEIGHT/z+SCREEN_WIDTH/2,-ny*SCREEN_HEIGHT/z+SCREEN_HEIGHT/2, z, avgcolor);
-            }
+            float nx =   x*pos.cphi + z*pos.sphi;
+            float nz = - x*pos.sphi + z*pos.cphi;
+            float ny =   y*pos.crho -nz*pos.srho;
+                   z =   y*pos.srho +nz*pos.crho;
+            if (z>0)
+                pix(nx*SCREEN_HEIGHT/z+SCREEN_WIDTH/2,-ny*SCREEN_HEIGHT/z+SCREEN_HEIGHT/2, z, avgcolor);
         }
     }
 };
@@ -96,26 +97,28 @@ struct octree {
 static octree M;
 
 /** Reads in the voxel. */
-static void load_voxel(const char * filename) {
+static void load_voxel(const char * filename,int scale=0) {
     // Open the file
     FILE * f = fopen(filename, "r");
     assert(f != NULL);
-    int cnt;
-    fscanf(f, "%d", &cnt);
+    int cnt=5000000;
 
     // Read voxels and store them 
     for (int i=0; i<cnt; i++) {
         int x,y,z,c;
-        fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
+        int res = fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
+        if (res<4) break;
         c=((c&0xff)<<16)|(c&0xff00)|((c&0xff0000)>>16)|0xff000000;
-        M.set(x,y,z,4,c);
+        M.set(x<<scale,y<<scale,z<<scale,20,c);
     }
     fclose(f);
 }
 
 /** Initialize scene. */
 void init () {
-    load_voxel("sign.vxl");
+    //load_voxel("sign.vxl",16);
+    load_voxel("points.vxl");
+    M.average();
     z_buf = new float[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
     pixs2 = new int[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
 }
@@ -142,7 +145,7 @@ void holefill() {
                         }
                     }
                 }
-                pixs[x+y*SCREEN_WIDTH] = 0xff00ff; //rgb(r/n,g/n,b/n);
+                pixs[x+y*SCREEN_WIDTH] = rgb(r/n,g/n,b/n);
             }
         }
     }
@@ -152,7 +155,7 @@ void holefill() {
 void draw() {
     for (int i = 0; i<(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2); i++) {
       z_buf[i] = 1e30f;
-      pixs2[i] = 0;
+      pixs2[i] = 0x8080b0;
     }
     M.draw(-pos.x,-pos.y,-pos.z,8);
     holefill();
