@@ -25,7 +25,7 @@ class button {
     public:
     enum {
         W, A, S, D,
-        SPACE, C,
+        SPACE, C, SHIFT,
         
         STATES
     };
@@ -36,7 +36,7 @@ static bool moves=true;
 
 // Position
 static const int MILLISECONDS_PER_FRAME = 50;
-static const float rotatespeed = 180, movespeed = 10;  
+static const float rotatespeed = 180, movespeed = 2;  
 static float phi, rho;
 static const float pid180=3.1415926535/180;
 
@@ -72,6 +72,9 @@ void pollevent() {
                 case SDLK_SPACE:
                     button_state[button::SPACE] = state;
                     break;
+                case SDLK_LSHIFT:
+                    button_state[button::SHIFT] = state;
+                    break;
                 default:
                     break;
             }
@@ -106,6 +109,9 @@ void sim() {
     const double dt = 1.0/60.0;
     moves=false;
     float dist=movespeed * dt;
+    if (button_state[button::SHIFT]) {
+        dist *= 5;
+    }
     
     if (button_state[button::W]) {
         pos.x -= pos.crho * pos.sphi * dist;
@@ -178,8 +184,9 @@ int main(int argc, char *argv[]) {
             SDL_Flip (screen);
             printf("%4.2f\n", t.elapsed());
         }
-        if (t.elapsed()-10<=MILLISECONDS_PER_FRAME) {
-            SDL_Delay((int)(MILLISECONDS_PER_FRAME-t.elapsed()));
+        int delay = MILLISECONDS_PER_FRAME-t.elapsed();
+        if (delay>10) {
+            SDL_Delay(delay);
         }
         sim();
         pollevent();
