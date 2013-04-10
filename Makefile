@@ -1,5 +1,8 @@
-#LDLIBS=-lmingw32 -lSDLmain -lSDL
-LDLIBS=-lSDL
+ifeq ($(OS),Windows_NT)
+	LDLIBS=-lmingw32 -lSDLmain -lSDL
+else
+	LDLIBS=-lSDL -lrt
+endif
 CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
 #CXXFLAGS=-std=gnu++0x -Wall -O1 -g -Wno-unused-result -march=corei7
 
