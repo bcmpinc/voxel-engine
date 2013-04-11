@@ -1,25 +1,27 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
+#include <cstdint>
 #include "common.h"
 
 static const bool PRUNE_NODES = false;
+static const int OCTREE_DEPTH = 20;
+static const int64_t SCENE_SIZE = 1 << OCTREE_DEPTH;
 
 using std::max;
 using std::min;
 
-float * z_buf;
-int * pixs2;
+int64_t * zbuf;
 
-inline void pix(int x, int y, float z, int c) {
-    int i = x+(y+1)*(SCREEN_WIDTH+2)+1;
-    if (x>=-1 && y>=-1 && x<SCREEN_WIDTH+1 && y<SCREEN_HEIGHT+1 && z_buf[i]>z) {
-        pixs2[i] = c;
-        z_buf[i] = z;
+inline void pix(int64_t x, int64_t y, int64_t z, int c) {
+    if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
+        int64_t i = x+y*(SCREEN_WIDTH);
+        if (zbuf[i]>z) {
+            pixs[i] = c;
+            zbuf[i] = z;
+            //pos.points_rendered++;
+        }
     }
-}
-inline void pix(float x, float y, float z, int c) {
-    pix((int)x,(int)y, z, c);
 }
 #define CLAMP(x) (x<0?0:x>255?255:x)
 inline int rgb(int r, int g, int b) {
@@ -34,9 +36,15 @@ inline int rgb(float r, float g, float b) {
 struct octree {
     octree * c[8];
     int avgcolor;
+    bool leaf;
     octree() : c{0,0,0,0,0,0,0,0}, avgcolor(0) {   
     }
-    ~octree() { for (int i=0; i<8; i++) delete c[i]; }
+    ~octree() { 
+        for (int i=0; i<8; i++)
+            for (int j=i+1; j<8; j++)
+                if(c[i]==c[j]) c[j] = NULL;
+        for (int i=0; i<8; i++) delete c[i]; 
+    }
     void set(int x, int y, int z, int depth, int color) {
         if (depth==0) {
             avgcolor = color;   
@@ -53,7 +61,7 @@ struct octree {
         }
     }
     void average() {
-        bool leaf=true;
+        leaf=true;
         for (int i=0; i<8; i++) {
             if(c[i]) {
                 c[i]->average();
@@ -79,45 +87,60 @@ struct octree {
             for (int i=0; i<8; i++) {
                 if(c[i]) {
                     avgcolor = c[i]->avgcolor;
-                    for (int j=0; j<8; j++) {
-                        if(c[i]->c[j]) goto non_leaf;
+                    if (c[i]->leaf) {
+                        delete c[i];
+                        c[i] = NULL;
                     }
-                    delete c[i];
-                    c[i] = NULL;
-                    non_leaf:;
                 }
             }            
         }
     }
-    void draw(float x, float y, float z, float scale) {
-        scale/=2;
-        bool leaf=true;
+    void replicate(int mask=2, int depth=0) {
+        if (depth<=0) return;
+        for (int i=0; i<8; i++) {
+            if (i == (i&mask)) {
+                if (c[i]) c[i]->replicate(mask, depth-1);
+            } else {
+                c[i] = c[i&mask];
+            }
+        }
+    }
+    void draw(int64_t x, int64_t y, int64_t z, int64_t scale) {
+        scale--;
+        int64_t sscale = 1<<scale;
+        x-=sscale;
+        y-=sscale;
+        z-=sscale;
         if (
-//           x*x+y*y+z*z < 4e6*scale*scale
-            fabs(x) < 1000*scale &&
-            fabs(y) < 1000*scale &&
-            fabs(z) < 1000*scale
+            !leaf &&
+            abs(x) < (sscale*350) &&
+            abs(y) < (sscale*350) &&
+            abs(z) < (sscale*350) &&
+            scale > 0 
         ) {
             for (int i=0; i<8; i++) {
                 if(c[i]) {
-                    c[i]->draw(x+(i&4?scale:-scale),y+(i&2?scale:-scale),z+(i&1?scale:-scale), scale);
-                    leaf = false;
+                    c[i]->draw(
+                        x+(((i&4)>>2)<<scale),
+                        y+(((i&2)>>1)<<scale),
+                        z+(((i&1)>>0)<<scale), 
+                    scale);
                 }
             }
-        }
-        if (leaf) {
-            float nx =   x*pos.cphi + z*pos.sphi;
-            float nz = - x*pos.sphi + z*pos.cphi;
-            float ny =   y*pos.crho -nz*pos.srho;
-                   z =   y*pos.srho +nz*pos.crho;
-            if (z>1e-10) {
-                int px = nx*SCREEN_HEIGHT/z+SCREEN_WIDTH/2;
-                int py = -ny*SCREEN_HEIGHT/z+SCREEN_HEIGHT/2;
-                pix(px, py, z, avgcolor);
-                pix(px+1, py, z, avgcolor);
-                pix(px, py+1, z, avgcolor);
-                pix(px-1, py, z, avgcolor);
-                pix(px, py-1, z, avgcolor);
+        } else {
+            int64_t nx = (  x*pos.cphi + z*pos.sphi) >> 16;
+            int64_t nz = (- x*pos.sphi + z*pos.cphi) >> 16;
+            int64_t ny = (  y*pos.crho -nz*pos.srho) >> 16;
+            int64_t mz = (  y*pos.srho +nz*pos.crho) >> 16;
+            if (mz>1e-10) {
+                int64_t px = SCREEN_WIDTH/2  + nx*SCREEN_HEIGHT/mz;
+                int64_t py = SCREEN_HEIGHT/2 - ny*SCREEN_HEIGHT/mz;
+                pix(px, py, mz, avgcolor);
+                /*pix(px+1, py+1, mz, avgcolor);
+                pix(px-1, py+1, mz, avgcolor);
+                pix(px-1, py-1, mz, avgcolor);
+                pix(px+1, py-1, mz, avgcolor);
+                pos.points_rendered++;*/
             }
         }
     }
@@ -127,7 +150,7 @@ struct octree {
 static octree M;
 
 /** Reads in the voxel. */
-static void load_voxel(const char * filename,int scale=0) {
+static void load_voxel(const char * filename) {
     // Open the file
     FILE * f = fopen(filename, "r");
     assert(f != NULL);
@@ -139,43 +162,103 @@ static void load_voxel(const char * filename,int scale=0) {
         int res = fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
         if (res<4) break;
         c=((c&0xff)<<16)|(c&0xff00)|((c&0xff0000)>>16)|0xff000000;
-        M.set(x<<scale,y<<scale,z<<scale,20,c);
+        M.set(x,y,z,OCTREE_DEPTH,c);
     }
     fclose(f);
 }
 
 /** Initialize scene. */
 void init () {
-    //load_voxel("sign.vxl",16);
-    load_voxel("points.vxl");
+    //load_voxel("sign.vxl");
+    load_voxel("mulch.vxl");
+    //load_voxel("points.vxl");
     M.average();
-    z_buf = new float[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
-    pixs2 = new int[(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2)];
+    M.replicate(2,6);
+    zbuf = new int64_t[(SCREEN_HEIGHT)*(SCREEN_WIDTH)];
 }
 
 void holefill() {
+    static const int W1=SCREEN_WIDTH;
+    static const int W2=SCREEN_WIDTH*2;
+    static const int W3=SCREEN_WIDTH*3;
+    // #..#
     for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH-3; x++) {
+            int i = x+y*SCREEN_WIDTH;
+            int64_t depth = min(zbuf[i], zbuf[i+3]);
+            depth += depth>>8;
+            if (
+                zbuf[i  ]<depth &&
+                zbuf[i+1]>depth && 
+                zbuf[i+2]>depth &&
+                zbuf[i+3]<depth
+            ) {
+                zbuf[i+1] = zbuf[i];
+                pixs[i+1] = pixs[i];
+                zbuf[i+2] = zbuf[i+3];
+                pixs[i+2] = pixs[i+3];
+            }
+        }
+    }
+    
+    
+    // #
+    // .
+    // #
+    for (int y=0; y<SCREEN_HEIGHT-2; y++) {
         for (int x=0; x<SCREEN_WIDTH; x++) {
-            int i = x+1+(y+1)*(SCREEN_WIDTH+2);
-            float depth = min(z_buf[i],min(max(z_buf[i-1],z_buf[i+1]),max(z_buf[i-SCREEN_WIDTH-2],z_buf[i+SCREEN_WIDTH+2])));
-            if (z_buf[i]<depth*1.05) {
-                pixs[x+y*SCREEN_WIDTH] = pixs2[i];
-            } else {
-                float r=0,g=0,b=0,n=0;
-                for (int y2=y;y2<=y+2;y2++) {
-                    for (int x2=x;x2<=x+2;x2++) {
-                        int j = x2 + y2*(SCREEN_WIDTH+2);
-                        if (depth*0.95<z_buf[j] && z_buf[j]<depth*1.05) {
-                            n++;
-                            int v = pixs2[j];
-                            r += (v&0xff0000>>16);
-                            g += (v&0xff00>>8);
-                            b += (v&0xff);
-                            n++;
-                        }
-                    }
-                }
-                pixs[x+y*SCREEN_WIDTH] = rgb(r/n,g/n,b/n);
+            int i = x+y*SCREEN_WIDTH;
+            int64_t depth = min(zbuf[i], zbuf[i+W2]);
+            depth += depth>>8;
+            if (
+                zbuf[i  ]<depth &&
+                zbuf[i+W1]>depth && 
+                zbuf[i+W2]<depth
+            ) {
+                zbuf[i+W1] = (zbuf[i]+zbuf[i+W2])/2;
+                pixs[i+W1] = ((pixs[i]&0xfefefe)+(pixs[i+W2]&0xfefefe))/2;
+            }
+        }
+    }
+    
+    
+    // #
+    // .
+    // .
+    // #
+    for (int y=0; y<SCREEN_HEIGHT-3; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            int i = x+y*SCREEN_WIDTH;
+            int64_t depth = min(zbuf[i], zbuf[i+W3]);
+            depth += depth>>8;
+            if (
+                zbuf[i  ]<depth &&
+                zbuf[i+W1]>depth && 
+                zbuf[i+W2]>depth &&
+                zbuf[i+W3]<depth
+            ) {
+                zbuf[i+W1] = zbuf[i];
+                pixs[i+W1] = pixs[i];
+                zbuf[i+W2] = zbuf[i+W3];
+                pixs[i+W2] = pixs[i+W3];
+            }
+        }
+    }
+    
+    
+    // #.#
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH-2; x++) {
+            int i = x+y*SCREEN_WIDTH;
+            int64_t depth = min(zbuf[i], zbuf[i+2]);
+            depth += depth>>8;
+            if (
+                zbuf[i  ]<depth &&
+                zbuf[i+1]>depth && 
+                zbuf[i+2]<depth
+            ) {
+                zbuf[i+1] = (zbuf[i]+zbuf[i+2])/2;
+                pixs[i+1] = ((pixs[i]&0xfefefe)+(pixs[i+2]&0xfefefe))/2;
             }
         }
     }
@@ -183,11 +266,13 @@ void holefill() {
 
 /** Draw anything on the screen. */
 void draw() {
-    for (int i = 0; i<(SCREEN_HEIGHT+2)*(SCREEN_WIDTH+2); i++) {
-      z_buf[i] = 1e30f;
-      pixs2[i] = 0x8080b0;
+    for (int i = 0; i<(SCREEN_HEIGHT)*(SCREEN_WIDTH); i++) {
+      zbuf[i] = 1L<<60;
+      pixs[i] = 0x8080b0;
     }
-    M.draw(-pos.x,-pos.y,-pos.z,8);
+    pos.points_rendered = 0;
+    
+    M.draw(SCENE_SIZE-pos.x,SCENE_SIZE-pos.y,SCENE_SIZE-pos.z,OCTREE_DEPTH);
     holefill();
 }
 

@@ -12,7 +12,7 @@ using namespace std;
 // pointer to the pixels (32 bit)
 int * pixs;
 
-position pos={0,0,-16};
+position pos = {1<<19, 1<<17, 3<<17};
 
 // The screen surface
 static SDL_Surface *screen = NULL;
@@ -35,8 +35,9 @@ static bool mousemove=false;
 static bool moves=true;
 
 // Position
+static const int ROTATIONAL_BITS = 16;
 static const int MILLISECONDS_PER_FRAME = 50;
-static const float rotatespeed = 180, movespeed = 2;  
+static const float rotatespeed = 180, movespeed = 1<<12;  
 static float phi, rho;
 static const float pid180=3.1415926535/180;
 
@@ -106,33 +107,32 @@ void pollevent() {
 }
 
 void sim() {
-    const double dt = 1.0/60.0;
     moves=false;
-    float dist=movespeed * dt;
+    int64_t dist = movespeed;
     if (button_state[button::SHIFT]) {
-        dist *= 5;
+        dist *= 16;
     }
     
     if (button_state[button::W]) {
-        pos.x -= pos.crho * pos.sphi * dist;
-        pos.y += pos.srho * dist;
-        pos.z += pos.crho * pos.cphi * dist;
+        pos.x -= pos.crho * (pos.sphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
+        pos.y += pos.srho * dist >> ROTATIONAL_BITS;
+        pos.z += pos.crho * (pos.cphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
         moves=true;
     }
     if (button_state[button::S]) {
-        pos.x += pos.crho * pos.sphi * dist;
-        pos.y -= pos.srho * dist;
-        pos.z -= pos.crho * pos.cphi * dist;
+        pos.x += pos.crho * (pos.sphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
+        pos.y -= pos.srho * dist >> ROTATIONAL_BITS;
+        pos.z -= pos.crho * (pos.cphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
         moves=true;
     }
     if (button_state[button::A]) {
-        pos.x -= pos.cphi * dist;
-        pos.z -= pos.sphi * dist;
+        pos.x -= pos.cphi * dist >> ROTATIONAL_BITS;
+        pos.z -= pos.sphi * dist >> ROTATIONAL_BITS;
         moves=true;
     }
     if (button_state[button::D]) {
-        pos.x += pos.cphi * dist;
-        pos.z += pos.sphi * dist;
+        pos.x += pos.cphi * dist >> ROTATIONAL_BITS;
+        pos.z += pos.sphi * dist >> ROTATIONAL_BITS;
         moves=true;
     }
     if (button_state[button::C]) {
@@ -172,17 +172,18 @@ int main(int argc, char *argv[]) {
 
     // mainloop
     while (!quit) {
-        pos.sphi = sin(phi*pid180);
-        pos.cphi = cos(phi*pid180);
-        pos.srho = sin(rho*pid180);
-        pos.crho = cos(rho*pid180);
+        pos.sphi = (1<<ROTATIONAL_BITS)*sin(phi*pid180);
+        pos.cphi = (1<<ROTATIONAL_BITS)*cos(phi*pid180);
+        pos.srho = (1<<ROTATIONAL_BITS)*sin(rho*pid180);
+        pos.crho = (1<<ROTATIONAL_BITS)*cos(rho*pid180);
 
         Timer t;
         if (moves) {
             //SDL_FillRect(screen,NULL, 0x000000);
             draw();
             SDL_Flip (screen);
-            printf("%4.2f\n", t.elapsed());
+            printf("%6.2f | %ld %ld %ld | %3.0f %3.0f | %10ld\n", t.elapsed(),pos.x>>10,pos.y>>10,pos.z>>10, rho, phi, pos.points_rendered);
+            fflush(stdout);
         }
         int delay = MILLISECONDS_PER_FRAME-t.elapsed();
         if (delay>10) {

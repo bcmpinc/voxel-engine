@@ -1,16 +1,29 @@
 ifeq ($(OS),Windows_NT)
 	LDLIBS=-lmingw32 -lSDLmain -lSDL
 else
-	LDLIBS=-lSDL -lrt
+	LDLIBS=-lSDL -lSDL_image -lrt
 endif
+CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
-#CXXFLAGS=-std=gnu++0x -Wall -O1 -g -Wno-unused-result -march=corei7
+#CXXFLAGS=-std=gnu++0x -Wall -O0 -g -Wno-unused-result -march=corei7
 
-SOURCE = vox timing octree
+all: vox convert heightmap
 
-vox: $(addsuffix .o,$(SOURCE) )
+.PHONY: all
+
+VOX_SOURCE = vox timing octree
+SOURCE = $(VOX_SOURCE) convert heightmap
+
+vox: $(addsuffix .o,$(VOX_SOURCE) )
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
+convert: convert.o
+	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+heightmap: heightmap.o
+	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+	
 %.d: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MM $< -MT $(@) -MT $(@:.d=.o) > $@
 
