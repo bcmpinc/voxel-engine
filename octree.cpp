@@ -170,10 +170,10 @@ static void load_voxel(const char * filename) {
 /** Initialize scene. */
 void init () {
     //load_voxel("sign.vxl");
-    load_voxel("mulch.vxl");
-    //load_voxel("points.vxl");
+    //load_voxel("mulch.vxl");
+    load_voxel("points.vxl");
     M.average();
-    M.replicate(2,6);
+    //M.replicate(2,6);
     zbuf = new int64_t[(SCREEN_HEIGHT)*(SCREEN_WIDTH)];
 }
 
@@ -267,7 +267,7 @@ void holefill() {
 /** Draw anything on the screen. */
 void draw() {
     for (int i = 0; i<(SCREEN_HEIGHT)*(SCREEN_WIDTH); i++) {
-      zbuf[i] = 1L<<60;
+      zbuf[i] = 1LL<<60;
       pixs[i] = 0x8080b0;
     }
     pos.points_rendered = 0;
