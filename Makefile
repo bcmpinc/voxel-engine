@@ -1,9 +1,10 @@
 ifeq ($(OS),Windows_NT)
+	CPPFLAGS=-DWINDOWS_NT
 	LDLIBS=-lmingw32 -lSDLmain -lSDL
 else
+	CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 	LDLIBS=-lSDL -lSDL_image -lrt
 endif
-CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
 #CXXFLAGS=-std=gnu++0x -Wall -O0 -g -Wno-unused-result -march=corei7
 

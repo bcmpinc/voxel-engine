@@ -154,8 +154,10 @@ int main(int argc, char *argv[]) {
         exit (2);
     }
     atexit (SDL_Quit);
-    //freopen( "CON", "w", stdout );
-    //freopen( "CON", "w", stderr );
+#ifdef WINDOWS_NT
+    freopen( "CON", "w", stdout );
+    freopen( "CON", "w", stderr );
+#endif
 
     // Set 32-bits video mode (eventually emulated)
     screen = SDL_SetVideoMode (SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_SWSURFACE | SDL_DOUBLEBUF);
