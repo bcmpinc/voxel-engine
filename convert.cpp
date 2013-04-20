@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <algorithm>
 /*
  * Mouna Loa:
@@ -9,7 +10,35 @@
  * lines: 135833540
  */
 
-int main() {
+void open_file(char * name) {
+  // Determine the file names.
+  int length=strlen(name)+5;
+  char infile[length];
+  char outfile[length];
+  sprintf(infile, "%s.txt", name);
+  sprintf(outfile, "%s.vxl", name);
+  
+  // Open the files.
+  FILE * res;
+  res = freopen( infile,  "r", stdin );
+  if (res==NULL) {
+    fprintf(stderr,"Failed to open '%s' for input.\n", infile);
+    exit(2);
+  }
+  res = freopen( outfile, "w", stdout );
+  if (res==NULL) {
+    fprintf(stderr,"Failed to open '%s' for output.\n", outfile);
+    exit(2);
+  }
+}
+
+int main(int argc, char ** argv) {
+  if (argc != 2) {
+    fprintf(stderr,"Please specify the file to convert (without '.txt').\n");
+    exit(2);
+  }
+  open_file(argv[1]);
+
   char header[1000];
   gets(header);
   int x1,x2,y1,y2,z1,z2;
