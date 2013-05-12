@@ -260,20 +260,6 @@ void holefill() {
     }
 }
 
-class Point {
-    float x, y, z;
-};
-
-struct Frustum {
-    int x0, x1;
-    int y0, y1;
-    Point p[4];
-};
-
-void quad_traverse(Frustum m) {
-  
-}
-
 /** Draws a line. */
 void line(double x1, double y1, double x2, double y2, int c) {
     if (x1<0) { 
@@ -382,6 +368,48 @@ void draw_box() {
     }
 }
 
+
+struct Frustum {
+    int x, y, s;
+    glm::dvec3 p[4];
+    void traverse() {
+        if (x+s<=0) return;
+        if (y+s<=0) return;
+        if (x>=SCREEN_WIDTH) return;
+        if (y>=SCREEN_HEIGHT) return;
+        if (s<=1) {
+            double ax=fabs(p[0].x);
+            double ay=fabs(p[0].y);
+            double az=fabs(p[0].z);
+            
+            if (ax>=ay && ax>=az) {
+                pix(x,y,3LL<<58,p[0].x>0?0x7f0000:0x3f0000);
+            } else if (ay>=ax && ay>=az) {
+                pix(x,y,3LL<<58,p[0].y>0?0x007f00:0x003f00);
+            } else if (az>=ax && az>=ay) {
+                pix(x,y,3LL<<58,p[0].z>0?0x00007f:0x00003f);
+            } else {
+                pix(x,y,3LL<<58,0x808080);
+            }
+
+            return;
+        }
+        s>>=1;
+        for (int i=0; i<4; i++) {
+            Frustum f = {
+                x+s*(i&1),y+s*(i/2),s,{
+                    (p[0]+p[i])/2.,
+                    (p[1]+p[i])/2.,
+                    (p[2]+p[i])/2.,
+                    (p[3]+p[i])/2.,
+                }
+            };
+            f.traverse();
+        }
+    }
+};
+
+
 /** Draw anything on the screen. */
 void draw() {
     for (int i = 0; i<(SCREEN_HEIGHT)*(SCREEN_WIDTH); i++) {
@@ -390,10 +418,15 @@ void draw() {
     }
     
     Frustum f;
-    f.x0=-512;
-    f.x1=512;
-    f.y0=-512;
-    f.y1=512;
+    f.x=SCREEN_WIDTH/2-512;
+    f.y=SCREEN_HEIGHT/2-512;
+    f.s=1024;
+    glm::dmat3 io = glm::inverse(orientation);
+    f.p[0]=io*glm::dvec3(-1, 1,1);
+    f.p[1]=io*glm::dvec3( 1, 1,1);
+    f.p[2]=io*glm::dvec3(-1,-1,1);
+    f.p[3]=io*glm::dvec3( 1,-1,1);
+    f.traverse();
     
     line(orientation*(glm::dvec3(3<<17,4<<17,4<<17)-position),orientation*(glm::dvec3(5<<17,4<<17,4<<17)-position),0xff00ff);
     line(orientation*(glm::dvec3(4<<17,3<<17,4<<17)-position),orientation*(glm::dvec3(4<<17,5<<17,4<<17)-position),0xff00ff);

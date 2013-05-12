@@ -185,10 +185,9 @@ int main(int argc, char *argv[]) {
             //SDL_FillRect(screen,NULL, 0x000000);
             draw();
             SDL_Flip (screen);
-            glm::dvec3 pos(view[3]);
             glm::dvec3 eye(view[2]);
             printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
-                   pos.x,pos.y,pos.z, eye.x,eye.y,eye.z);
+                   position.x,position.y,position.z, eye.x,eye.y,eye.z);
             fflush(stdout);
         }
         int delay = MILLISECONDS_PER_FRAME-t.elapsed();
