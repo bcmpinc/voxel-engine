@@ -13,7 +13,9 @@ using namespace std;
 // pointer to the pixels (32 bit)
 int * pixs;
 
-glm::dmat4 view;
+static glm::dmat4 view;
+glm::dmat3 orientation;
+glm::dvec3 position;
 
 // The screen surface
 static SDL_Surface *screen = NULL;
@@ -37,7 +39,7 @@ static bool moves=true;
 
 // Position
 static const int MILLISECONDS_PER_FRAME = 50;
-static const double rotatespeed = 0.3, movespeed = 1<<12;  
+static const double rotatespeed = -0.3, movespeed = 1<<12;  
 
 // checks user input
 static void pollevent() {
@@ -87,16 +89,18 @@ static void pollevent() {
         }
         case SDL_MOUSEMOTION: {
             if (mousemove) {
+                glm::dmat4 tview = glm::transpose(view);
                 view = glm::rotate(
                     view, 
                     rotatespeed * event.motion.xrel,
-                    glm::dvec3(view[1])
+                    glm::dvec3(tview[1])
                 );
                 view = glm::rotate(
                     view, 
                     rotatespeed * event.motion.yrel,
-                    glm::dvec3(view[0])
+                    glm::dvec3(tview[0])
                 );
+                orientation = glm::dmat3(view);                
                 moves=true;
             }
             break;
@@ -117,28 +121,30 @@ void sim() {
         dist *= 16;
     }
     
+    glm::dmat3 M = glm::transpose(orientation);
+    
     if (button_state[button::W]) {
-        view = glm::translate(view, dist*glm::dvec3(view[2]));
+        position += dist * M[2];
         moves=true;
     }
     if (button_state[button::S]) {
-        view = glm::translate(view, -dist*glm::dvec3(view[2]));
+        position -= dist * M[2];
         moves=true;
     }
     if (button_state[button::A]) {
-        view = glm::translate(view, -dist*glm::dvec3(view[0]));
+        position -= dist * M[0];
         moves=true;
     }
     if (button_state[button::D]) {
-        view = glm::translate(view, dist*glm::dvec3(view[0]));
+        position += dist * M[0];
         moves=true;
     }
     if (button_state[button::C]) {
-        view = glm::translate(view, glm::dvec3(0,-dist,0));
+        position -= dist * M[1];
         moves=true;
     }
     if (button_state[button::SPACE]) {
-        view = glm::translate(view, glm::dvec3(0,dist,0));
+        position += dist * M[1];
         moves=true;
     }
 }
@@ -168,7 +174,7 @@ int main(int argc, char *argv[]) {
     // set the pixel pointer
     pixs=(int*)screen->pixels;
     
-    view = glm::translate(view, glm::dvec3(1<<19, 1<<17, 3<<17));
+    position = glm::dvec3(1<<19, 1<<17, 3<<17);
 
     init();
 
