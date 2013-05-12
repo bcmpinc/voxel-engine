@@ -1,13 +1,9 @@
 // pointer to the pixels (32 bit)
-#include <cstdint>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 extern int * pixs;
-struct position {
-    int64_t x,y,z;
-    int64_t sphi, cphi;
-    int64_t srho, crho;  
-    uint64_t points_rendered;
-};
-extern position pos;
+extern glm::dmat4 view;
+
 void init();
 void draw();
 

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <algorithm>
 #include <SDL/SDL.h>
+
 #include "timing.h"
 #include "common.h"
 
@@ -12,7 +13,7 @@ using namespace std;
 // pointer to the pixels (32 bit)
 int * pixs;
 
-position pos = {1<<19, 1<<17, 3<<17};
+glm::dmat4 view;
 
 // The screen surface
 static SDL_Surface *screen = NULL;
@@ -35,14 +36,11 @@ static bool mousemove=false;
 static bool moves=true;
 
 // Position
-static const int ROTATIONAL_BITS = 16;
 static const int MILLISECONDS_PER_FRAME = 50;
-static const float rotatespeed = 180, movespeed = 1<<12;  
-static float phi, rho;
-static const float pid180=3.1415926535/180;
+static const double rotatespeed = 0.3, movespeed = 1<<12;  
 
 // checks user input
-void pollevent() {
+static void pollevent() {
     SDL_Event event;
   
     /* Check for events */
@@ -89,10 +87,16 @@ void pollevent() {
         }
         case SDL_MOUSEMOTION: {
             if (mousemove) {
-                phi -= event.motion.xrel*0.3;
-                rho -= event.motion.yrel*0.3;
-                if (rho<-90) rho=-90;
-                if (rho>90) rho=90;
+                view = glm::rotate(
+                    view, 
+                    rotatespeed * event.motion.xrel,
+                    glm::dvec3(view[1])
+                );
+                view = glm::rotate(
+                    view, 
+                    rotatespeed * event.motion.yrel,
+                    glm::dvec3(view[0])
+                );
                 moves=true;
             }
             break;
@@ -108,39 +112,33 @@ void pollevent() {
 
 void sim() {
     moves=false;
-    int64_t dist = movespeed;
+    double dist = movespeed;
     if (button_state[button::SHIFT]) {
         dist *= 16;
     }
     
     if (button_state[button::W]) {
-        pos.x -= pos.crho * (pos.sphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
-        pos.y += pos.srho * dist >> ROTATIONAL_BITS;
-        pos.z += pos.crho * (pos.cphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
+        view = glm::translate(view, dist*glm::dvec3(view[2]));
         moves=true;
     }
     if (button_state[button::S]) {
-        pos.x += pos.crho * (pos.sphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
-        pos.y -= pos.srho * dist >> ROTATIONAL_BITS;
-        pos.z -= pos.crho * (pos.cphi * dist >> ROTATIONAL_BITS) >> ROTATIONAL_BITS;
+        view = glm::translate(view, -dist*glm::dvec3(view[2]));
         moves=true;
     }
     if (button_state[button::A]) {
-        pos.x -= pos.cphi * dist >> ROTATIONAL_BITS;
-        pos.z -= pos.sphi * dist >> ROTATIONAL_BITS;
+        view = glm::translate(view, -dist*glm::dvec3(view[0]));
         moves=true;
     }
     if (button_state[button::D]) {
-        pos.x += pos.cphi * dist >> ROTATIONAL_BITS;
-        pos.z += pos.sphi * dist >> ROTATIONAL_BITS;
+        view = glm::translate(view, dist*glm::dvec3(view[0]));
         moves=true;
     }
     if (button_state[button::C]) {
-        pos.y -= dist;
+        view = glm::translate(view, glm::dvec3(0,-dist,0));
         moves=true;
     }
     if (button_state[button::SPACE]) {
-        pos.y += dist;
+        view = glm::translate(view, glm::dvec3(0,dist,0));
         moves=true;
     }
 }
@@ -170,21 +168,21 @@ int main(int argc, char *argv[]) {
     // set the pixel pointer
     pixs=(int*)screen->pixels;
     
+    view = glm::translate(view, glm::dvec3(1<<19, 1<<17, 3<<17));
+
     init();
 
     // mainloop
     while (!quit) {
-        pos.sphi = (1<<ROTATIONAL_BITS)*sin(phi*pid180);
-        pos.cphi = (1<<ROTATIONAL_BITS)*cos(phi*pid180);
-        pos.srho = (1<<ROTATIONAL_BITS)*sin(rho*pid180);
-        pos.crho = (1<<ROTATIONAL_BITS)*cos(rho*pid180);
-
         Timer t;
         if (moves) {
             //SDL_FillRect(screen,NULL, 0x000000);
             draw();
             SDL_Flip (screen);
-            printf("%6.2f | %ld %ld %ld | %3.0f %3.0f | %10ld\n", t.elapsed(),pos.x>>10,pos.y>>10,pos.z>>10, rho, phi, pos.points_rendered);
+            glm::dvec3 pos(view[3]);
+            glm::dvec3 eye(view[2]);
+            printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
+                   pos.x,pos.y,pos.z, eye.x,eye.y,eye.z);
             fflush(stdout);
         }
         int delay = MILLISECONDS_PER_FRAME-t.elapsed();
