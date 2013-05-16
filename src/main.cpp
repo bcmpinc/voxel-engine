@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
         exit (2);
     }
     atexit (SDL_Quit);
-#ifdef WINDOWS_NT
+#if defined _WIN32 || defined _WIN64
     freopen( "CON", "w", stdout );
     freopen( "CON", "w", stderr );
 #endif

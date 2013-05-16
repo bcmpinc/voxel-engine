@@ -40,7 +40,7 @@ int main(int argc, char ** argv) {
   open_file(argv[1]);
 
   char header[1000];
-  gets(header);
+  fgets(header,1000,stdin);
   int x1,x2,y1,y2,z1,z2;
   int clas, t1, t2, angle;
   int intensity,rets,retno, ptsrc;
