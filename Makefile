@@ -8,8 +8,9 @@ else
   CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
   LDLIBS=-lSDL -lSDL_image -lrt
 endif
-CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
-#CXXFLAGS=-std=gnu++0x -Wall -O0 -g -Wno-unused-result -march=corei7
+CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7 -flto
+#CXXFLAGS=-std=gnu++0x -Wall -O0 -g -Wno-unused-result
+LDFLAGS=-fwhole-program -fuse-linker-plugin
 
 # Deafult rule patterns
 build/%.o: src/%.cpp
@@ -38,7 +39,7 @@ $(1): $(addprefix build/,$(addsuffix .o,$(2)))
 endef
 
 # Target definitions
-$(eval $(call target,voxel,main octree timing))
+$(eval $(call target,voxel,main events art timing octree))
 $(eval $(call target,convert,convert))
 $(eval $(call target,heightmap,heightmap))
 
