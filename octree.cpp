@@ -150,7 +150,7 @@ static void load_voxel(const char * filename) {
     // Open the file
     FILE * f = fopen(filename, "r");
     assert(f != NULL);
-    int cnt=1000000;
+    int cnt=2000000;
 
     // Read voxels and store them 
     for (int i=0; i<cnt; i++) {
@@ -165,11 +165,11 @@ static void load_voxel(const char * filename) {
 
 /** Initialize scene. */
 void init () {
-    //load_voxel("sign.vxl");
-    //load_voxel("mulch.vxl");
-    load_voxel("points.vxl");
+    //load_voxel("vxl/sign.vxl");
+    load_voxel("vxl/mulch.vxl");
+    //load_voxel("vxl/points.vxl");
     M.average();
-    //M.replicate(2,6);
+    M.replicate(2,6);
     zbuf = new int64_t[(SCREEN_HEIGHT)*(SCREEN_WIDTH)];
 }
 

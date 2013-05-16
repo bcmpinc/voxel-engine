@@ -15,8 +15,8 @@ void open_file(char * name) {
   int length=strlen(name)+5;
   char infile[length];
   char outfile[length];
-  sprintf(infile, "%s.txt", name);
-  sprintf(outfile, "%s.vxl", name);
+  sprintf(infile, "input/%s.txt", name);
+  sprintf(outfile, "vxl/%s.vxl", name);
   
   // Open the files.
   FILE * res;

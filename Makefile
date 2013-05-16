@@ -10,10 +10,10 @@ CXXFLAGS=-std=gnu++0x -Wall -O3 -Wno-unused-result -march=corei7
 
 all: vox convert heightmap
 
-.PHONY: all
+.PHONY: all clean
 
 VOX_SOURCE = vox timing octree
-SOURCE = $(VOX_SOURCE) convert heightmap
+SOURCE := $(VOX_SOURCE) convert heightmap
 
 vox: $(addsuffix .o,$(VOX_SOURCE) )
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
@@ -29,7 +29,7 @@ heightmap: heightmap.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MM $< -MT $(@) -MT $(@:.d=.o) > $@
 
 clean:
-	$(eval CLEAN_FILES:=$(vox $(addsuffix .d,$(SOURCE)) $(addsuffix .o,$(SOURCE)) ) )
+	$(eval CLEAN_FILES:=$(addsuffix .d,$(SOURCE)) $(addsuffix .o,$(SOURCE)) )
 	$(if $(CLEAN_FILES),-$(RM) $(CLEAN_FILES))
 
 ifneq "$(MAKECMDGOALS)" "clean"
