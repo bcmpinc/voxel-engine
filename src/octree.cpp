@@ -214,7 +214,7 @@ void draw_octree() {
     f.p[1]=io*glm::dvec3( d, d,1);
     f.p[2]=io*glm::dvec3(-d,-d,1);
     f.p[3]=io*glm::dvec3( d,-d,1);
-    f.traverse();
+    //f.traverse();
         
     M.draw(SCENE_SIZE-position.x,SCENE_SIZE-position.y,SCENE_SIZE-position.z,OCTREE_DEPTH);
     //holefill();

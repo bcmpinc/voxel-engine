@@ -270,3 +270,31 @@ void draw_axis() {
     line(orientation*(glm::dvec3(4<<17,3<<17,4<<17)-position),orientation*(glm::dvec3(4<<17,5<<17,4<<17)-position),0xff00ff);
     line(orientation*(glm::dvec3(4<<17,4<<17,3<<17)-position),orientation*(glm::dvec3(4<<17,4<<17,5<<17)-position),0xff00ff);
 }
+
+void draw_cube() {
+    glm::dmat3 io = glm::transpose(orientation);
+    double d = 1.0/SCREEN_HEIGHT;
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            glm::dvec3 p( (x-SCREEN_WIDTH/2)*d, (SCREEN_HEIGHT/2-y)*d, 1 );
+            p = io * p;
+            double ax=fabs(p.x);
+            double ay=fabs(p.y);
+            double az=fabs(p.z);
+        
+            if ((x&1)==1 && (y&1)==0 && p.x<0) continue;
+            if ((x&1)==0 && (y&1)==1 && p.y<0) continue;
+            if ((x&1)==1 && (y&1)==1 && p.z<0) continue;
+        
+            if (ax>=ay && ax>=az) {
+                pix(x,y,3LL<<58,p.x>0?0x7f0000:0x3f0000);
+            } else if (ay>=ax && ay>=az) {
+                pix(x,y,3LL<<58,p.y>0?0x007f00:0x003f00);
+            } else if (az>=ax && az>=ay) {
+                pix(x,y,3LL<<58,p.z>0?0x00007f:0x00003f);
+            } else {
+                pix(x,y,3LL<<58,0x808080);
+            }
+        }
+    }
+}

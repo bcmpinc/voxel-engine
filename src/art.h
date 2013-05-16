@@ -17,5 +17,6 @@ void line(double x1, double y1, double x2, double y2, int c);
 void line(glm::dvec3 va, glm::dvec3 vb, int c);
 void draw_box();
 void draw_axis();
+void draw_cube();
 
 #endif

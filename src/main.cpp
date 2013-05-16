@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
             clear_screen(0x8080b0);
             draw_box();
             draw_axis();
+            draw_cube();
             draw_octree();
             flip_screen();
             
