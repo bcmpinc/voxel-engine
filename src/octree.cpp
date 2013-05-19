@@ -168,6 +168,14 @@ struct Quadtree {
             }
         }
     }
+    void reset() {
+        if (depth>=0) {
+            depth=1ULL<<60;
+            for (int i=0; i<4; i++) {
+                c[i]->reset();
+            }
+        }
+    }
 };
 
 static Quadtree Q;
@@ -182,6 +190,8 @@ void init_octree () {
     
     Q.init(SCREEN_WIDTH/2-512,SCREEN_HEIGHT/2-512,1024);
 }
+
+
 
 /** Draw anything on the screen. */
 void draw_octree() {
