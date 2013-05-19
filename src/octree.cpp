@@ -146,6 +146,32 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
+struct Quadtree {
+    uint64_t depth;
+    Quadtree* c[4];
+    Quadtree() : depth(1ULL<<60), c{0,0,0,0} {}
+    ~Quadtree() {
+        for (int i=0; i<4; i++) {
+            delete c[i];
+        }
+    }
+    void init(int x, int y, int s) {
+        if (x+s<=0 || y+s<=0 || x>=SCREEN_WIDTH || y>=SCREEN_HEIGHT) {
+            depth=-1;
+            return;
+        }
+        s>>=1;
+        if (s) {
+            for (int i=0; i<4; i++) {
+                c[i] = new Quadtree();
+                c[i]->init(x+s*(i&1),y+s*(i/2),s);
+            }
+        }
+    }
+};
+
+static Quadtree Q;
+
 /** Initialize scene. */
 void init_octree () {
     //load_voxel("vxl/sign.vxl");
@@ -153,71 +179,13 @@ void init_octree () {
     //load_voxel("vxl/points.vxl");
     M.average();
     M.replicate(2,6);
+    
+    Q.init(SCREEN_WIDTH/2-512,SCREEN_HEIGHT/2-512,1024);
 }
-
-
-struct Frustum {
-    int x, y, s;
-    glm::dvec3 p[4];
-    void traverse() {
-        if (x+s<=0) return;
-        if (y+s<=0) return;
-        if (x>=SCREEN_WIDTH) return;
-        if (y>=SCREEN_HEIGHT) return;
-        if (s<=1) {
-            double ax=fabs(p[0].x);
-            double ay=fabs(p[0].y);
-            double az=fabs(p[0].z);
-            
-            if ((x&1)==1 && (y&1)==0 && p[0].x<0) return;
-            if ((x&1)==0 && (y&1)==1 && p[0].y<0) return;
-            if ((x&1)==1 && (y&1)==1 && p[0].z<0) return;
-            
-            if (ax>=ay && ax>=az) {
-                pix(x,y,3LL<<58,p[0].x>0?0x7f0000:0x3f0000);
-            } else if (ay>=ax && ay>=az) {
-                pix(x,y,3LL<<58,p[0].y>0?0x007f00:0x003f00);
-            } else if (az>=ax && az>=ay) {
-                pix(x,y,3LL<<58,p[0].z>0?0x00007f:0x00003f);
-            } else {
-                pix(x,y,3LL<<58,0x808080);
-            }
-
-            return;
-        }
-        s>>=1;
-        for (int i=0; i<4; i++) {
-            Frustum f = {
-                x+s*(i&1),y+s*(i/2),s,{
-                    (p[0]+p[i])/2.,
-                    (p[1]+p[i])/2.,
-                    (p[2]+p[i])/2.,
-                    (p[3]+p[i])/2.,
-                }
-            };
-            f.traverse();
-        }
-    }
-};
-
 
 /** Draw anything on the screen. */
 void draw_octree() {
-    
-    Frustum f;
-    f.x=SCREEN_WIDTH/2-512;
-    f.y=SCREEN_HEIGHT/2-512;
-    f.s=1024;
-    glm::dmat3 io = glm::transpose(orientation);
-    double d = 512.0/SCREEN_HEIGHT;
-    f.p[0]=io*glm::dvec3(-d, d,1);
-    f.p[1]=io*glm::dvec3( d, d,1);
-    f.p[2]=io*glm::dvec3(-d,-d,1);
-    f.p[3]=io*glm::dvec3( d,-d,1);
-    //f.traverse();
-        
     M.draw(SCENE_SIZE-position.x,SCENE_SIZE-position.y,SCENE_SIZE-position.z,OCTREE_DEPTH);
-    //holefill();
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
