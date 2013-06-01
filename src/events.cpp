@@ -7,7 +7,7 @@
 class button {
     public:
     enum {
-        W, A, S, D,
+        W, A, S, D, Z, X, 
         SPACE, C, SHIFT,
         
         STATES
@@ -62,6 +62,12 @@ void handle_events() {
                 case SDLK_c:
                     button_state[button::C] = state;
                     break;
+                case SDLK_z:
+                    button_state[button::Z] = state;
+                    break;
+                case SDLK_x:
+                    button_state[button::X] = state;
+                    break;
                 case SDLK_SPACE:
                     button_state[button::SPACE] = state;
                     break;
@@ -112,6 +118,19 @@ void handle_events() {
     
     glm::dmat3 M = glm::transpose(orientation);
     
+    int rd = 0;
+    if (button_state[button::Z]) rd++;
+    if (button_state[button::X]) rd--;
+    if (rd) {
+        glm::dmat4 tview = glm::transpose(view);
+        view = glm::rotate(
+            view, 
+            rd*3.0,
+            glm::dvec3(tview[2])
+        );
+        orientation = glm::dmat3(view);                
+        moves=true;
+    }
     if (button_state[button::W]) {
         position += dist * M[2];
         moves=true;

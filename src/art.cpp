@@ -1,4 +1,5 @@
-#include <SDL/SDL.h>
+#include <SDL.h>
+#include <SDL_image.h>
 
 #include "events.h"
 #include "art.h"
@@ -61,9 +62,9 @@ void pix(int64_t x, int64_t y, int64_t z, int c) {
         }
     }
 }
-#define CLAMP(x) (x<0?0:x>255?255:x)
+#define CLAMP(x,l,u) (x<l?l:x>u?u:x)
 int rgb(int r, int g, int b) {
-    return CLAMP(r)<<16|CLAMP(g)<<8|CLAMP(b);
+    return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
 }
 int rgb(float r, float g, float b) {
     return rgb((int)(r+0.5),(int)(g+0.5),(int)(b+0.5));
@@ -282,6 +283,7 @@ void draw_cube() {
             double ay=fabs(p.y);
             double az=fabs(p.z);
         
+            if ((x&1)==0 && (y&1)==0) continue;
             if ((x&1)==1 && (y&1)==0 && p.x<0) continue;
             if ((x&1)==0 && (y&1)==1 && p.y<0) continue;
             if ((x&1)==1 && (y&1)==1 && p.z<0) continue;
@@ -298,3 +300,81 @@ void draw_cube() {
         }
     }
 }
+
+void draw_cubemap(struct SDL_Surface ** cubemap) {
+    glm::dmat3 io = glm::transpose(orientation);
+    double d = 1.0/SCREEN_HEIGHT;
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            glm::dvec3 p( (x-SCREEN_WIDTH/2)*d, (SCREEN_HEIGHT/2-y)*d, 1 );
+            p = io * p;
+            double ax=fabs(p.x);
+            double ay=fabs(p.y);
+            double az=fabs(p.z);
+        
+            if (ax>=ay && ax>=az) {
+                if (p.x>0) {
+                    SDL_Surface * s = cubemap[2];
+                    if (s) {
+                        int fx = s->w*(-p.z/ax/2+0.5);
+                        int fy = s->h*(-p.y/ax/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }
+                } else {
+                    SDL_Surface * s = cubemap[4];
+                    if (s) {
+                        int fx = s->w*(p.z/ax/2+0.5);
+                        int fy = s->h*(-p.y/ax/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }
+                }
+            } else if (ay>=ax && ay>=az) {
+                if (p.y>0) {
+                    SDL_Surface * s = cubemap[0];
+                    if (s) {
+                        int fx = s->w*(p.x/ay/2+0.5);
+                        int fy = s->h*(p.z/ay/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }
+                } else {
+                    SDL_Surface * s = cubemap[5];
+                    if (s) {
+                        int fx = s->w*(p.x/ay/2+0.5);
+                        int fy = s->h*(-p.z/ay/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }                    
+                }
+            } else if (az>=ax && az>=ay) {
+                if (p.z>0) {
+                    SDL_Surface * s = cubemap[1];
+                    if (s) {
+                        int fx = s->w*(p.x/az/2+0.5);
+                        int fy = s->h*(-p.y/az/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }
+                } else {
+                    SDL_Surface * s = cubemap[3];
+                    if (s) {
+                        int fx = s->w*(-p.x/az/2+0.5);
+                        int fy = s->h*(-p.y/az/2+0.5);
+                        fx = CLAMP(fx, 0, s->w);
+                        fy = CLAMP(fy, 0, s->h);
+                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+

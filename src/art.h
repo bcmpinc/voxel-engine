@@ -18,5 +18,6 @@ void line(glm::dvec3 va, glm::dvec3 vb, int c);
 void draw_box();
 void draw_axis();
 void draw_cube();
-
+void draw_cubemap(struct SDL_Surface **);
+    
 #endif
