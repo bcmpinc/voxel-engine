@@ -9,7 +9,7 @@ void init_screen(const char * caption);
 void clear_screen(int c);
 void flip_screen();
 
-void pix(int64_t x, int64_t y, int64_t z, int c);
+void pix(int64_t x, int64_t y, int c);
 int rgb(int r, int g, int b);
 int rgb(float r, float g, float b);
 void holefill();

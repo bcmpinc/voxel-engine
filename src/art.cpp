@@ -13,7 +13,6 @@ namespace {
   
   // pointer to the pixels (32 bit)
   int * pixs;
-  int64_t * zbuf;
 }
 
 void init_screen(const char * caption) {
@@ -38,12 +37,10 @@ void init_screen(const char * caption) {
 
     // set the pixel pointer
     pixs=(int*)screen->pixels;  
-    zbuf = new int64_t[(SCREEN_HEIGHT)*(SCREEN_WIDTH)];
 }
 
 void clear_screen(int c){
     for (int i = 0; i<(SCREEN_HEIGHT)*(SCREEN_WIDTH); i++) {
-        zbuf[i] = 1LL<<60;
         pixs[i] = c;
     }  
 }
@@ -52,14 +49,10 @@ void flip_screen() {
     SDL_Flip (screen);
 }
 
-void pix(int64_t x, int64_t y, int64_t z, int c) {
+void pix(int64_t x, int64_t y, int c) {
     if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
         int64_t i = x+y*(SCREEN_WIDTH);
-        if (zbuf[i]>z) {
-            pixs[i] = c;
-            zbuf[i] = z;
-            //pos.points_rendered++;
-        }
+        pixs[i] = c;
     }
 }
 #define CLAMP(x,l,u) (x<l?l:x>u?u:x)
@@ -71,6 +64,9 @@ int rgb(float r, float g, float b) {
 }
 
 void holefill() {
+    abort();
+    int * zbuf = NULL;
+    
     static const int W1=SCREEN_WIDTH;
     static const int W2=SCREEN_WIDTH*2;
     static const int W3=SCREEN_WIDTH*3;
@@ -202,7 +198,7 @@ void line(double x1, double y1, double x2, double y2, int c) {
     for (int i=0; i<=d; i++) {
         double x=(x1+(x2-x1)*i/d);
         double y=(y1+(y2-y1)*i/d);
-        pix(x,y,1LL<<59,c);
+        pix(x,y,c);
     }
 }
 
@@ -289,13 +285,13 @@ void draw_cube() {
             if ((x&1)==1 && (y&1)==1 && p.z<0) continue;
         
             if (ax>=ay && ax>=az) {
-                pix(x,y,3LL<<58,p.x>0?0x7f0000:0x3f0000);
+                pix(x,y,p.x>0?0x7f0000:0x3f0000);
             } else if (ay>=ax && ay>=az) {
-                pix(x,y,3LL<<58,p.y>0?0x007f00:0x003f00);
+                pix(x,y,p.y>0?0x007f00:0x003f00);
             } else if (az>=ax && az>=ay) {
-                pix(x,y,3LL<<58,p.z>0?0x00007f:0x00003f);
+                pix(x,y,p.z>0?0x00007f:0x00003f);
             } else {
-                pix(x,y,3LL<<58,0x808080);
+                pix(x,y,0x808080);
             }
         }
     }
@@ -320,7 +316,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(-p.y/ax/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }
                 } else {
                     SDL_Surface * s = cubemap[4];
@@ -329,7 +325,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(-p.y/ax/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }
                 }
             } else if (ay>=ax && ay>=az) {
@@ -340,7 +336,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(p.z/ay/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }
                 } else {
                     SDL_Surface * s = cubemap[5];
@@ -349,7 +345,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(-p.z/ay/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }                    
                 }
             } else if (az>=ax && az>=ay) {
@@ -360,7 +356,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(-p.y/az/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }
                 } else {
                     SDL_Surface * s = cubemap[3];
@@ -369,7 +365,7 @@ void draw_cubemap(struct SDL_Surface ** cubemap) {
                         int fy = s->h*(-p.y/az/2+0.5);
                         fx = CLAMP(fx, 0, s->w);
                         fy = CLAMP(fy, 0, s->h);
-                        pix(x,y,7LL<<57, ((unsigned int*)s->pixels)[fx+fy*s->w]);
+                        pix(x,y, ((unsigned int*)s->pixels)[fx+fy*s->w]);
                     }
                 }
             }

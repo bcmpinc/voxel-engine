@@ -12,6 +12,7 @@
 
 void init_octree();
 void draw_octree();
+void draw_octree(SDL_Surface ** cubemap);
 
 using namespace std;
 
@@ -26,8 +27,7 @@ SDL_PixelFormat fmt = {
   0
 };
 
-SDL_Surface * cubemap[6];
-void load_cubemap() {
+void load_cubemap(SDL_Surface ** cubemap) {
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
     cubemap[0] = SDL_ConvertSurface(IMG_Load("img/cubemap0.png"), &fmt, SDL_SWSURFACE);
     cubemap[1] = SDL_ConvertSurface(IMG_Load("img/cubemap1.png"), &fmt, SDL_SWSURFACE);
@@ -37,26 +37,52 @@ void load_cubemap() {
     cubemap[5] = SDL_ConvertSurface(IMG_Load("img/cubemap5.png"), &fmt, SDL_SWSURFACE);
 }
 
+SDL_Surface* create_surface(Uint32 flags,int width,int height) {
+  return SDL_CreateRGBSurface(flags,width,height,
+                  fmt.BitsPerPixel,
+                  fmt.Rmask,fmt.Gmask,fmt.Bmask,fmt.Amask );
+}
+
+void create_cubemap(SDL_Surface ** cubemap, int size) {
+    for (int i=0; i<6; i++) 
+        cubemap[i] = create_surface(SDL_SWSURFACE, size, size);
+}
+
+void copy_cubemap(SDL_Surface ** src, SDL_Surface ** dest) {
+    for (int i=0; i<6; i++) {
+        assert(src[i]->w == dest[i]->w);
+        assert(src[i]->h == dest[i]->h);
+        memcpy(dest[i]->pixels, src[i]->pixels, 4*src[i]->w*src[i]->h);
+    }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     
-    position = glm::dvec3(1<<19, 1<<17, 3<<17);
+    position = glm::dvec3(0, 0, 0);
 
-    //init_octree();
+    init_octree();
     
-    load_cubemap();
+    SDL_Surface * back[6];
+    load_cubemap(back);
+
+    SDL_Surface * voxel[6];
+    create_cubemap(voxel, 1024);
 
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
             clear_screen(0x8080b0);
-            draw_cubemap(cubemap);
-            draw_box();
+            copy_cubemap(back, voxel);
+            draw_octree(voxel);
+            draw_cubemap(voxel);
+            //draw_box();
+            draw_octree();
             //draw_axis();
             //draw_cube();
-            //draw_octree();
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

@@ -2,6 +2,9 @@
 #include <cassert>
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <SDL_video.h>
 
 #include "art.h"
 #include "events.h"
@@ -95,9 +98,9 @@ struct octree {
         z-=sscale;
         if (
             !leaf &&
-            abs(x) < (sscale*350) &&
-            abs(y) < (sscale*350) &&
-            abs(z) < (sscale*350) &&
+            abs(x) < (sscale*250) &&
+            abs(y) < (sscale*250) &&
+            abs(z) < (sscale*250) &&
             scale > 0 
         ) {
             for (int i=0; i<8; i++) {
@@ -114,7 +117,7 @@ struct octree {
             if (n.z>1e-10) {
                 int64_t px = SCREEN_WIDTH/2  + n.x*SCREEN_HEIGHT/n.z;
                 int64_t py = SCREEN_HEIGHT/2 - n.y*SCREEN_HEIGHT/n.z;
-                pix(px, py, n.z, avgcolor);
+                pix(px, py, avgcolor);
                 /*pix(px+1, py+1, mz, avgcolor);
                 pix(px-1, py+1, mz, avgcolor);
                 pix(px-1, py-1, mz, avgcolor);
@@ -146,56 +149,98 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
-struct Quadtree {
-    uint64_t depth;
-    Quadtree* c[4];
-    Quadtree() : depth(1ULL<<60), c{0,0,0,0} {}
-    ~Quadtree() {
-        for (int i=0; i<4; i++) {
-            delete c[i];
-        }
-    }
-    void init(int x, int y, int s) {
-        if (x+s<=0 || y+s<=0 || x>=SCREEN_WIDTH || y>=SCREEN_HEIGHT) {
-            depth=-1;
-            return;
-        }
-        s>>=1;
-        if (s) {
-            for (int i=0; i<4; i++) {
-                c[i] = new Quadtree();
-                c[i]->init(x+s*(i&1),y+s*(i/2),s);
-            }
-        }
-    }
-    void reset() {
-        if (depth>=0) {
-            depth=1ULL<<60;
-            for (int i=0; i<4; i++) {
-                c[i]->reset();
-            }
-        }
-    }
-};
-
-static Quadtree Q;
+int * rendered[10];
 
 /** Initialize scene. */
 void init_octree () {
     //load_voxel("vxl/sign.vxl");
-    load_voxel("vxl/mulch.vxl");
-    //load_voxel("vxl/points.vxl");
+    //load_voxel("vxl/mulch.vxl");
+    load_voxel("vxl/points.vxl");
     M.average();
-    M.replicate(2,6);
+    //M.replicate(0,6);
     
-    Q.init(SCREEN_WIDTH/2-512,SCREEN_HEIGHT/2-512,1024);
+    for (int i=0; i<10; i++) {
+        rendered[i] = new int[1<<(2*i)];
+    }
 }
 
-
+#define ONE SCENE_SIZE
+void traverse_xpp(
+    SDL_Surface * f, int rd, int rx, int ry, octree * s, 
+    int x1, int x2, int x1p, int x2p, 
+    int y1, int y2, int y1p, int y2p
+){
+    assert(rx>=0);
+    assert(ry>=0);
+    assert(rx<1<<rd);
+    assert(ry<1<<rd);
+     //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
+        
+    // occlusion
+    if (s==NULL) return;
+    if (rendered[rd][rx+(ry<<rd)]) return;
+    if (x2<-ONE || ONE<x1-x1p) return;
+    if (y2<-ONE || ONE<y1-y1p) return;
+    if (x2<x1) return;
+    if (y2<y1) return;
+    
+    // rendering
+    if (rd==9) {
+        ((uint32_t*)f->pixels)[512+rx+1024*ry] = s->avgcolor;
+        rendered[9][rx+512*ry] = 1;
+        return;
+    }
+    if (s->leaf) {
+        // Leaf node, so no further traversal.
+        traverse_xpp(f, rd+1, rx*2  , ry*2  , s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
+        traverse_xpp(f, rd+1, rx*2+1, ry*2  , s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
+        traverse_xpp(f, rd+1, rx*2  , ry*2+1, s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
+        traverse_xpp(f, rd+1, rx*2+1, ry*2+1, s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
+        return;
+    }
+    
+    // Recursion
+    if (x2-x1 <= 2*ONE || y2-y1 <= 2*ONE) {
+        // Traverse octree
+        // x4 y2 z1
+        traverse_xpp(f, rd, rx, ry, s->c[0^2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[2^2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[4^2], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[6^2], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[1^2], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[3^2], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[5^2], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[7^2], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
+    } else {
+        // Traverse quadtree
+        int xm = (x1+x2)/2;
+        int xmp = (x1p+x2p)/2;
+        int ym = (y1+y2)/2;
+        int ymp = (y1p+y2p)/2;
+        traverse_xpp(f, rd+1, rx*2  , ry*2  , s, x1, xm, x1p, xmp, y1, ym, y1p, ymp );
+        traverse_xpp(f, rd+1, rx*2+1, ry*2  , s, xm, x2, xmp, x2p, y1, ym, y1p, ymp );
+        traverse_xpp(f, rd+1, rx*2  , ry*2+1, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p );
+        traverse_xpp(f, rd+1, rx*2+1, ry*2+1, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p );
+        rendered[rd][rx+(ry<<rd)] = 
+            rendered[rd+1][2*rx  +((2*ry  )<<(rd+1))] &&
+            rendered[rd+1][2*rx+1+((2*ry  )<<(rd+1))] && 
+            rendered[rd+1][2*rx  +((2*ry+1)<<(rd+1))] &&
+            rendered[rd+1][2*rx+1+((2*ry+1)<<(rd+1))];
+    }
+}
 
 /** Draw anything on the screen. */
-void draw_octree() {
-    M.draw(SCENE_SIZE-position.x,SCENE_SIZE-position.y,SCENE_SIZE-position.z,OCTREE_DEPTH);
+void draw_octree(SDL_Surface ** cubemap) {
+    for (int i=0; i<10; i++) {
+        memset(rendered[i],0,sizeof(int)<<(2*i));
+    }
+    int x = position.x;
+    int y = position.y;
+    int W = SCENE_SIZE/2 - position.z;
+    traverse_xpp(cubemap[1], 0, 0, 0, &M, x, x+W, 0, ONE, y, y+W, 0, ONE);
 }
 
+void draw_octree() {
+    M.draw(SCENE_SIZE/2-position.x,SCENE_SIZE/2-position.y,SCENE_SIZE/2-position.z,OCTREE_DEPTH);
+}
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
