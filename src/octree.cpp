@@ -155,9 +155,10 @@ int * rendered[10];
 void init_octree () {
     //load_voxel("vxl/sign.vxl");
     //load_voxel("vxl/mulch.vxl");
-    load_voxel("vxl/points.vxl");
+    load_voxel("vxl/test.vxl");
+    //load_voxel("vxl/points.vxl");
     M.average();
-    //M.replicate(0,6);
+    M.replicate(0,6);
     
     for (int i=0; i<10; i++) {
         rendered[i] = new int[1<<(2*i)];
@@ -179,38 +180,31 @@ void traverse_xpp(
     // occlusion
     if (s==NULL) return;
     if (rendered[rd][rx+(ry<<rd)]) return;
-    if (x2<-ONE || ONE<x1-x1p) return;
-    if (y2<-ONE || ONE<y1-y1p) return;
+    if (x2<-ONE || ONE<x1-2*x1p) return;
+    if (y2<-ONE || ONE<y1-2*y1p) return;
     if (x2<x1) return;
     if (y2<y1) return;
     
     // rendering
     if (rd==9) {
-        ((uint32_t*)f->pixels)[512+rx+1024*ry] = s->avgcolor;
+        ((uint32_t*)f->pixels)[512+rx+1024*(511-ry)] = s->avgcolor;
         rendered[9][rx+512*ry] = 1;
-        return;
-    }
-    if (s->leaf) {
-        // Leaf node, so no further traversal.
-        traverse_xpp(f, rd+1, rx*2  , ry*2  , s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
-        traverse_xpp(f, rd+1, rx*2+1, ry*2  , s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
-        traverse_xpp(f, rd+1, rx*2  , ry*2+1, s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
-        traverse_xpp(f, rd+1, rx*2+1, ry*2+1, s, x1, x2, x1p, x2p, y1, y2, y1p, y2p);
         return;
     }
     
     // Recursion
-    if (x2-x1 <= 2*ONE || y2-y1 <= 2*ONE) {
+    if (!s->leaf && x2-x1 <= 2*ONE && y2-y1 <= 2*ONE) {
         // Traverse octree
         // x4 y2 z1
-        traverse_xpp(f, rd, rx, ry, s->c[0^2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[2^2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[4^2], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[6^2], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[1^2], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[3^2], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[5^2], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
-        traverse_xpp(f, rd, rx, ry, s->c[7^2], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
+        int d = 1;
+        traverse_xpp(f, rd, rx, ry, s->c[0^d], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[2^d], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[4^d], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[6^d], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[1^d], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[3^d], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[5^d], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p);
+        traverse_xpp(f, rd, rx, ry, s->c[7^d], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p);
     } else {
         // Traverse quadtree
         int xm = (x1+x2)/2;

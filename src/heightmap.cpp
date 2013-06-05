@@ -16,8 +16,8 @@ SDL_PixelFormat fmt = {
 
 int main() {
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/mulch-tiled.jpeg"), &fmt, SDL_SWSURFACE);
-  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/mulch-heightmap.png"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/test.png"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/test-h.png"), &fmt, SDL_SWSURFACE);
   
   assert(texture);
   assert(height);
@@ -38,7 +38,7 @@ int main() {
     for(int x=0;x<w;x++) {
       int i = x+y*w;
       int z = h_px[i]&0xff;
-      printf("%d %d %d %06x\n", x*16  , z, y*16  , t_px[i] & 0xffffff);
+      printf("%d %d %d %06x\n", x*16  , z*16, y*16  , t_px[i] & 0xffffff);
       //printf("%d %d %d %06x\n", x*16+8, z, y*16  , t_px[i] & 0xffffff);
       //printf("%d %d %d %06x\n", x*16  , z, y*16+8, t_px[i] & 0xffffff);
       //printf("%d %d %d %06x\n", x*16+8, z, y*16+8, t_px[i] & 0xffffff);

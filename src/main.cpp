@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
             copy_cubemap(back, voxel);
             draw_octree(voxel);
             draw_cubemap(voxel);
-            //draw_box();
-            draw_octree();
+            draw_box();
+            //draw_octree();
             //draw_axis();
             //draw_cube();
             flip_screen();
