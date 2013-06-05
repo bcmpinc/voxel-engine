@@ -61,7 +61,7 @@ void copy_cubemap(SDL_Surface ** src, SDL_Surface ** dest) {
 int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     
-    position = glm::dvec3(0, 0, 0);
+    position = glm::dvec3(0, 0, -3000000);
 
     init_octree();
     

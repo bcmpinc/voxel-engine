@@ -2,8 +2,8 @@
 #define ART_H
 #include <glm/glm.hpp>
 
-#define SCREEN_WIDTH    640
-#define SCREEN_HEIGHT   480
+#define SCREEN_WIDTH    1024
+#define SCREEN_HEIGHT   768
 
 void init_screen(const char * caption);
 void clear_screen(int c);
