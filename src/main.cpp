@@ -29,12 +29,12 @@ SDL_PixelFormat fmt = {
 
 void load_cubemap(SDL_Surface ** cubemap) {
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-    cubemap[0] = SDL_ConvertSurface(IMG_Load("img/cubemap0.png"), &fmt, SDL_SWSURFACE);
-    cubemap[1] = SDL_ConvertSurface(IMG_Load("img/cubemap1.png"), &fmt, SDL_SWSURFACE);
-    cubemap[2] = SDL_ConvertSurface(IMG_Load("img/cubemap2.png"), &fmt, SDL_SWSURFACE);
-    cubemap[3] = SDL_ConvertSurface(IMG_Load("img/cubemap3.png"), &fmt, SDL_SWSURFACE);
-    cubemap[4] = SDL_ConvertSurface(IMG_Load("img/cubemap4.png"), &fmt, SDL_SWSURFACE);
-    cubemap[5] = SDL_ConvertSurface(IMG_Load("img/cubemap5.png"), &fmt, SDL_SWSURFACE);
+    cubemap[0] = SDL_ConvertSurface(IMG_Load("img2/cubemap0.jpg"), &fmt, SDL_SWSURFACE);
+    cubemap[1] = SDL_ConvertSurface(IMG_Load("img2/cubemap1.jpg"), &fmt, SDL_SWSURFACE);
+    cubemap[2] = SDL_ConvertSurface(IMG_Load("img2/cubemap2.jpg"), &fmt, SDL_SWSURFACE);
+    cubemap[3] = SDL_ConvertSurface(IMG_Load("img2/cubemap3.jpg"), &fmt, SDL_SWSURFACE);
+    cubemap[4] = SDL_ConvertSurface(IMG_Load("img2/cubemap4.jpg"), &fmt, SDL_SWSURFACE);
+    cubemap[5] = SDL_ConvertSurface(IMG_Load("img2/cubemap5.jpg"), &fmt, SDL_SWSURFACE);
 }
 
 SDL_Surface* create_surface(Uint32 flags,int width,int height) {
