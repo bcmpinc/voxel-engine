@@ -8,6 +8,7 @@
 
 #include "art.h"
 #include "events.h"
+#include "quadtree.h"
 
 static const bool PRUNE_NODES = false;
 static const int OCTREE_DEPTH = 20;
@@ -156,7 +157,8 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
-int * rendered[10];
+typedef quadtree<11> Q;
+static Q cubemap[6];
 
 /** Initialize scene. */
 void init_octree () {
@@ -167,36 +169,31 @@ void init_octree () {
     M.average();
     M.replicate(2,2);
     
-    for (int i=0; i<10; i++) {
-        rendered[i] = new int[1<<(2*i)];
-    }
 }
 
 #define ONE SCENE_SIZE
 void traverse_zpp(
-    SDL_Surface * f, int rd, int rx, int ry, octree * s, 
+    Q& f, unsigned int r, octree * s, 
     int x1, int x2, int x1p, int x2p, 
     int y1, int y2, int y1p, int y2p,
     int d
 ){
-    assert(rx>=0);
-    assert(ry>=0);
-    assert(rx<1<<rd);
-    assert(ry<1<<rd);
+    assert(r<Q::N);
      //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
         
     // occlusion
     if (s==NULL) return;
-    if (rendered[rd][rx+(ry<<rd)]) return;
+    if (f.map[r]==0) return;
     if (x2<-ONE || ONE<x1-2*x1p) return;
     if (y2<-ONE || ONE<y1-2*y1p) return;
     if (x2<x1) return;
     if (y2<y1) return;
     
     // rendering
-    if (rd==9) {
-        ((uint32_t*)f->pixels)[512+rx+1024*(511-ry)] = s->avgcolor;
-        rendered[9][rx+512*ry] = 1;
+    if (r>=Q::M) {
+        int v = f.map[r];
+        pix(v&0xffff, v>>16, s->avgcolor);
+        f.map[r] = 0;
         return;
     }
     
@@ -204,56 +201,50 @@ void traverse_zpp(
     if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
         // Traverse octree
         // x4 y2 z1
-        traverse_zpp(f, rd, rx, ry, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_zpp(f, rd, rx, ry, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_zpp(f, r, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
     } else {
         // Traverse quadtree
         int xm = (x1+x2)/2;
         int xmp = (x1p+x2p)/2;
         int ym = (y1+y2)/2;
         int ymp = (y1p+y2p)/2;
-        traverse_zpp(f, rd+1, rx*2  , ry*2  , s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_zpp(f, rd+1, rx*2+1, ry*2  , s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_zpp(f, rd+1, rx*2  , ry*2+1, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_zpp(f, rd+1, rx*2+1, ry*2+1, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        rendered[rd][rx+(ry<<rd)] = 
-            rendered[rd+1][2*rx  +((2*ry  )<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry  )<<(rd+1))] && 
-            rendered[rd+1][2*rx  +((2*ry+1)<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry+1)<<(rd+1))];
+        traverse_zpp(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
+        traverse_zpp(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
+        traverse_zpp(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
+        traverse_zpp(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
+        f.compute(r);
     }
 }
 
 void traverse_znp(
-    SDL_Surface * f, int rd, int rx, int ry, octree * s, 
+    Q& f, unsigned int r, octree * s, 
     int x1, int x2, int x1p, int x2p, 
     int y1, int y2, int y1p, int y2p,
     int d
 ){
-    assert(rx>=0);
-    assert(ry>=0);
-    assert(rx<1<<rd);
-    assert(ry<1<<rd);
+    assert(r<Q::N);
      //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
         
     // occlusion
     if (s==NULL) return;
-    if (rendered[rd][rx+(ry<<rd)]) return;
+    if (f.map[r]==0) return;
     if (x2-2*x2p<-ONE || ONE<x1) return;
     if (y2<-ONE || ONE<y1-2*y1p) return;
     if (x2<x1) return;
     if (y2<y1) return;
     
     // rendering
-    if (rd==9) {
-        ((uint32_t*)f->pixels)[rx+1024*(511-ry)] = s->avgcolor;
-        rendered[9][rx+512*ry] = 1;
+    if (r>=Q::M) {
+        int v = f.map[r];
+        pix(v&0xffff, v>>16, s->avgcolor);
+        f.map[r] = 0;
         return;
     }
     
@@ -261,56 +252,50 @@ void traverse_znp(
     if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
         // Traverse octree
         // x4 y2 z1
-        traverse_znp(f, rd, rx, ry, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_znp(f, rd, rx, ry, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_znp(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
     } else {
         // Traverse quadtree
         int xm = (x1+x2)/2;
         int xmp = (x1p+x2p)/2;
         int ym = (y1+y2)/2;
         int ymp = (y1p+y2p)/2;
-        traverse_znp(f, rd+1, rx*2  , ry*2  , s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_znp(f, rd+1, rx*2+1, ry*2  , s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_znp(f, rd+1, rx*2  , ry*2+1, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_znp(f, rd+1, rx*2+1, ry*2+1, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        rendered[rd][rx+(ry<<rd)] = 
-            rendered[rd+1][2*rx  +((2*ry  )<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry  )<<(rd+1))] && 
-            rendered[rd+1][2*rx  +((2*ry+1)<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry+1)<<(rd+1))];
+        traverse_znp(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
+        traverse_znp(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
+        traverse_znp(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
+        traverse_znp(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
+        f.compute(r);
     }
 }
 
 void traverse_zpn(
-    SDL_Surface * f, int rd, int rx, int ry, octree * s, 
+    Q& f, unsigned int r, octree * s, 
     int x1, int x2, int x1p, int x2p, 
     int y1, int y2, int y1p, int y2p,
     int d
 ){
-    assert(rx>=0);
-    assert(ry>=0);
-    assert(rx<1<<rd);
-    assert(ry<1<<rd);
+    assert(r<Q::N);
      //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
         
     // occlusion
     if (s==NULL) return;
-    if (rendered[rd][rx+(ry<<rd)]) return;
+    if (f.map[r]==0) return;
     if (x2<-ONE || ONE<x1-2*x1p) return;
     if (y2-2*y2p<-ONE || ONE<y1) return;
     if (x2<x1) return;
     if (y2<y1) return;
     
     // rendering
-    if (rd==9) {
-        ((uint32_t*)f->pixels)[512+rx+1024*(1023-ry)] = s->avgcolor;
-        rendered[9][rx+512*ry] = 1;
+    if (r>=Q::M) {
+        int v = f.map[r];
+        pix(v&0xffff, v>>16, s->avgcolor);
+        f.map[r] = 0;
         return;
     }
     
@@ -318,56 +303,50 @@ void traverse_zpn(
     if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
         // Traverse octree
         // x4 y2 z1
-        traverse_zpn(f, rd, rx, ry, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_zpn(f, rd, rx, ry, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_zpn(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
     } else {
         // Traverse quadtree
         int xm = (x1+x2)/2;
         int xmp = (x1p+x2p)/2;
         int ym = (y1+y2)/2;
         int ymp = (y1p+y2p)/2;
-        traverse_zpn(f, rd+1, rx*2  , ry*2  , s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_zpn(f, rd+1, rx*2+1, ry*2  , s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_zpn(f, rd+1, rx*2  , ry*2+1, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_zpn(f, rd+1, rx*2+1, ry*2+1, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        rendered[rd][rx+(ry<<rd)] = 
-            rendered[rd+1][2*rx  +((2*ry  )<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry  )<<(rd+1))] && 
-            rendered[rd+1][2*rx  +((2*ry+1)<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry+1)<<(rd+1))];
+        traverse_zpn(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
+        traverse_zpn(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
+        traverse_zpn(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
+        traverse_zpn(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
+        f.compute(r);
     }
 }
 
 void traverse_znn(
-    SDL_Surface * f, int rd, int rx, int ry, octree * s, 
+    Q& f, unsigned int r, octree * s, 
     int x1, int x2, int x1p, int x2p, 
     int y1, int y2, int y1p, int y2p,
     int d
 ){
-    assert(rx>=0);
-    assert(ry>=0);
-    assert(rx<1<<rd);
-    assert(ry<1<<rd);
+    assert(r<Q::N);
      //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
         
     // occlusion
     if (s==NULL) return;
-    if (rendered[rd][rx+(ry<<rd)]) return;
+    if (f.map[r]==0) return;
     if (x2-2*x2p<-ONE || ONE<x1) return;
     if (y2-2*y2p<-ONE || ONE<y1) return;
     if (x2<x1) return;
     if (y2<y1) return;
     
     // rendering
-    if (rd==9) {
-        ((uint32_t*)f->pixels)[rx+1024*(1023-ry)] = s->avgcolor;
-        rendered[9][rx+512*ry] = 1;
+    if (r>=Q::M) {
+        int v = f.map[r];
+        pix(v&0xffff, v>>16, s->avgcolor);
+        f.map[r] = 0;
         return;
     }
     
@@ -375,56 +354,92 @@ void traverse_znn(
     if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
         // Traverse octree
         // x4 y2 z1
-        traverse_znn(f, rd, rx, ry, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
-        traverse_znn(f, rd, rx, ry, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
+        traverse_znn(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
     } else {
         // Traverse quadtree
         int xm = (x1+x2)/2;
         int xmp = (x1p+x2p)/2;
         int ym = (y1+y2)/2;
         int ymp = (y1p+y2p)/2;
-        traverse_znn(f, rd+1, rx*2  , ry*2  , s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_znn(f, rd+1, rx*2+1, ry*2  , s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_znn(f, rd+1, rx*2  , ry*2+1, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_znn(f, rd+1, rx*2+1, ry*2+1, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        rendered[rd][rx+(ry<<rd)] = 
-            rendered[rd+1][2*rx  +((2*ry  )<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry  )<<(rd+1))] && 
-            rendered[rd+1][2*rx  +((2*ry+1)<<(rd+1))] &&
-            rendered[rd+1][2*rx+1+((2*ry+1)<<(rd+1))];
+        traverse_znn(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
+        traverse_znn(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
+        traverse_znn(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
+        traverse_znn(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
+        f.compute(r);
     }
+}
+
+static void prepare_cubemap() {
+    const int SIZE = Q::SIZE;
+    // Reset the quadtrees
+    for (int i=0; i<6; i++) cubemap[i].clear();
+    // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
+    glm::dmat3 inverse_orientation = glm::transpose(orientation);
+    double fov = 1.0/SCREEN_HEIGHT;
+    // Fill the leaf-layer of the quadtrees with the pixel locations on screen.
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            int value = x + (y << 16);
+            glm::dvec3 p( (x-SCREEN_WIDTH/2)*fov, (SCREEN_HEIGHT/2-y)*fov, 1 );
+            p = inverse_orientation * p;
+            double ax=fabs(p.x);
+            double ay=fabs(p.y);
+            double az=fabs(p.z);
+        
+            if (ax>=ay && ax>=az) {
+                if (p.x>0) {
+                    int fx = SIZE*(-p.z/ax/2+0.5);
+                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    cubemap[2].set(fx,fy,value);
+                } else {
+                    int fx = SIZE*(p.z/ax/2+0.5);
+                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    cubemap[4].set(fx,fy,value);
+                }
+            } else if (ay>=ax && ay>=az) {
+                if (p.y>0) {
+                    int fx = SIZE*(p.x/ay/2+0.5);
+                    int fy = SIZE*(p.z/ay/2+0.5);
+                    cubemap[0].set(fx,fy,value);
+                } else {
+                    int fx = SIZE*(p.x/ay/2+0.5);
+                    int fy = SIZE*(-p.z/ay/2+0.5);
+                    cubemap[5].set(fx,fy,value);
+                }
+            } else if (az>=ax && az>=ay) {
+                if (p.z>0) {
+                    int fx = SIZE*(p.x/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
+                    cubemap[1].set(fx,fy,value);
+                } else {
+                    int fx = SIZE*(-p.x/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
+                    cubemap[3].set(fx,fy,value);
+                }
+            }
+        }
+    }
+    // build the non-leaf layers of the quadtree
+    for (int i=0; i<6; i++) cubemap[i].build(); 
 }
 
 /** Draw anything on the screen. */
-void draw_octree(SDL_Surface ** cubemap) {
+void draw_octree() {
     int x = position.x;
     int y = position.y;
     int W = SCENE_SIZE/2 - position.z;
-    for (int i=0; i<10; i++) {
-        memset(rendered[i],0,sizeof(int)<<(2*i));
-    }
-    traverse_zpp(cubemap[1], 0, 0, 0, &M, x, x+W, 0, ONE, y, y+W, 0, ONE, 0);
-    for (int i=0; i<10; i++) {
-        memset(rendered[i],0,sizeof(int)<<(2*i));
-    }
-    traverse_znp(cubemap[1], 0, 0, 0, &M, x-W, x,-ONE, 0, y, y+W, 0, ONE, 0);
-    for (int i=0; i<10; i++) {
-        memset(rendered[i],0,sizeof(int)<<(2*i));
-    }
-    traverse_zpn(cubemap[1], 0, 0, 0, &M, x, x+W, 0, ONE, y-W, y,-ONE, 0, 0);
-    for (int i=0; i<10; i++) {
-        memset(rendered[i],0,sizeof(int)<<(2*i));
-    }
-    traverse_znn(cubemap[1], 0, 0, 0, &M, x-W, x,-ONE, 0, y-W, y,-ONE, 0, 0);
+    prepare_cubemap();
+    traverse_znn(cubemap[1], 1, &M, x-W, x,-ONE, 0, y-W, y,-ONE, 0, 0);
+    traverse_zpn(cubemap[1], 2, &M, x, x+W, 0, ONE, y-W, y,-ONE, 0, 0);
+    traverse_znp(cubemap[1], 3, &M, x-W, x,-ONE, 0, y, y+W, 0, ONE, 0);
+    traverse_zpp(cubemap[1], 4, &M, x, x+W, 0, ONE, y, y+W, 0, ONE, 0);
 }
 
-void draw_octree() {
-    M.draw(SCENE_SIZE/2-position.x,SCENE_SIZE/2-position.y,SCENE_SIZE/2-position.z,OCTREE_DEPTH);
-}
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 

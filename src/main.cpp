@@ -12,7 +12,6 @@
 
 void init_octree();
 void draw_octree();
-void draw_octree(SDL_Surface ** cubemap);
 
 using namespace std;
 
@@ -68,19 +67,14 @@ int main(int argc, char *argv[]) {
     SDL_Surface * back[6];
     load_cubemap(back);
 
-    SDL_Surface * voxel[6];
-    create_cubemap(voxel, 1024);
-
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
             clear_screen(0x8080b0);
-            copy_cubemap(back, voxel);
-            draw_octree(voxel);
-            draw_cubemap(voxel);
+            draw_cubemap(back);
+            draw_octree();
             draw_box();
-            //draw_octree();
             //draw_axis();
             //draw_cube();
             flip_screen();
