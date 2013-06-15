@@ -152,22 +152,22 @@ static void load_voxel(const char * filename) {
         int res = fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
         if (res<4) break;
         c=((c&0xff)<<16)|(c&0xff00)|((c&0xff0000)>>16)|0xff000000;
-        M.set(x,y,z,6,c);
+        M.set(x,y,z,OCTREE_DEPTH,c);
     }
     fclose(f);
 }
 
-typedef quadtree<11> Q;
+typedef quadtree<10> Q;
 static Q cubemap[6];
 
 /** Initialize scene. */
 void init_octree () {
-    load_voxel("vxl/sign.vxl");
+    //load_voxel("vxl/sign.vxl");
     //load_voxel("vxl/mulch.vxl");
-    //load_voxel("vxl/test.vxl");
+    load_voxel("vxl/test.vxl");
     //load_voxel("vxl/points.vxl");
     M.average();
-    M.replicate(2,2);
+    M.replicate(2,6);
     
 }
 
@@ -191,14 +191,13 @@ void traverse_zpp(
     
     // rendering
     if (r>=Q::M) {
-        int v = f.map[r];
-        pix(v&0xffff, v>>16, s->avgcolor);
+        f.face[r-Q::M] = s->avgcolor;
         f.map[r] = 0;
         return;
     }
     
     // Recursion
-    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
+    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
         // Traverse octree
         // x4 y2 z1
         traverse_zpp(f, r, s->c[0], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
@@ -242,14 +241,13 @@ void traverse_znp(
     
     // rendering
     if (r>=Q::M) {
-        int v = f.map[r];
-        pix(v&0xffff, v>>16, s->avgcolor);
+        f.face[r-Q::M] = s->avgcolor;
         f.map[r] = 0;
         return;
     }
     
     // Recursion
-    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
+    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
         // Traverse octree
         // x4 y2 z1
         traverse_znp(f, r, s->c[4], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)+ONE,2*(y2-y2p)+ONE,y1p,y2p,d+1);
@@ -293,14 +291,13 @@ void traverse_zpn(
     
     // rendering
     if (r>=Q::M) {
-        int v = f.map[r];
-        pix(v&0xffff, v>>16, s->avgcolor);
+        f.face[r-Q::M] = s->avgcolor;
         f.map[r] = 0;
         return;
     }
     
     // Recursion
-    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
+    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
         // Traverse octree
         // x4 y2 z1
         traverse_zpn(f, r, s->c[2], 2*(x1-x1p)+ONE,2*(x2-x2p)+ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
@@ -344,14 +341,13 @@ void traverse_znn(
     
     // rendering
     if (r>=Q::M) {
-        int v = f.map[r];
-        pix(v&0xffff, v>>16, s->avgcolor);
+        f.face[r-Q::M] = s->avgcolor;
         f.map[r] = 0;
         return;
     }
     
     // Recursion
-    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 32) {
+    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
         // Traverse octree
         // x4 y2 z1
         traverse_znn(f, r, s->c[6], 2*(x1-x1p)-ONE,2*(x2-x2p)-ONE,x1p,x2p, 2*(y1-y1p)-ONE,2*(y2-y2p)-ONE,y1p,y2p,d+1);
@@ -383,10 +379,9 @@ static void prepare_cubemap() {
     // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
     double fov = 1.0/SCREEN_HEIGHT;
-    // Fill the leaf-layer of the quadtrees with the pixel locations on screen.
+    // Fill the leaf-layer of the quadtrees with wether they have a pixel location on screen.
     for (int y=0; y<SCREEN_HEIGHT; y++) {
         for (int x=0; x<SCREEN_WIDTH; x++) {
-            int value = x + (y << 16);
             glm::dvec3 p( (x-SCREEN_WIDTH/2)*fov, (SCREEN_HEIGHT/2-y)*fov, 1 );
             p = inverse_orientation * p;
             double ax=fabs(p.x);
@@ -397,37 +392,86 @@ static void prepare_cubemap() {
                 if (p.x>0) {
                     int fx = SIZE*(-p.z/ax/2+0.5);
                     int fy = SIZE*(-p.y/ax/2+0.5);
-                    cubemap[2].set(fx,fy,value);
+                    cubemap[2].set(fx,fy);
                 } else {
                     int fx = SIZE*(p.z/ax/2+0.5);
                     int fy = SIZE*(-p.y/ax/2+0.5);
-                    cubemap[4].set(fx,fy,value);
+                    cubemap[4].set(fx,fy);
                 }
             } else if (ay>=ax && ay>=az) {
                 if (p.y>0) {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(p.z/ay/2+0.5);
-                    cubemap[0].set(fx,fy,value);
+                    cubemap[0].set(fx,fy);
                 } else {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(-p.z/ay/2+0.5);
-                    cubemap[5].set(fx,fy,value);
+                    cubemap[5].set(fx,fy);
                 }
             } else if (az>=ax && az>=ay) {
                 if (p.z>0) {
                     int fx = SIZE*(p.x/az/2+0.5);
                     int fy = SIZE*(p.y/az/2+0.5);
-                    cubemap[1].set(fx,fy,value);
+                    cubemap[1].set(fx,fy);
                 } else {
                     int fx = SIZE*(-p.x/az/2+0.5);
                     int fy = SIZE*(p.y/az/2+0.5);
-                    cubemap[3].set(fx,fy,value);
+                    cubemap[3].set(fx,fy);
                 }
             }
         }
     }
     // build the non-leaf layers of the quadtree
     for (int i=0; i<6; i++) cubemap[i].build(); 
+}
+
+static void draw_cubemap() {
+    const int SIZE = Q::SIZE;
+    // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
+    glm::dmat3 inverse_orientation = glm::transpose(orientation);
+    double fov = 1.0/SCREEN_HEIGHT;
+    // render the faces of the cubemap on screen.
+    for (int y=0; y<SCREEN_HEIGHT; y++) {
+        for (int x=0; x<SCREEN_WIDTH; x++) {
+            glm::dvec3 p( (x-SCREEN_WIDTH/2)*fov, (SCREEN_HEIGHT/2-y)*fov, 1 );
+            p = inverse_orientation * p;
+            double ax=fabs(p.x);
+            double ay=fabs(p.y);
+            double az=fabs(p.z);
+        
+            if (ax>=ay && ax>=az) {
+                if (p.x>0) {
+                    int fx = SIZE*(-p.z/ax/2+0.5);
+                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    pix(x, y, cubemap[2].get_face(fx,fy));
+                } else {
+                    int fx = SIZE*(p.z/ax/2+0.5);
+                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    pix(x, y, cubemap[4].get_face(fx,fy));
+                }
+            } else if (ay>=ax && ay>=az) {
+                if (p.y>0) {
+                    int fx = SIZE*(p.x/ay/2+0.5);
+                    int fy = SIZE*(p.z/ay/2+0.5);
+                    pix(x, y, cubemap[0].get_face(fx,fy));
+                } else {
+                    int fx = SIZE*(p.x/ay/2+0.5);
+                    int fy = SIZE*(-p.z/ay/2+0.5);
+                    pix(x, y, cubemap[5].get_face(fx,fy));
+                }
+            } else if (az>=ax && az>=ay) {
+                if (p.z>0) {
+                    int fx = SIZE*(p.x/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
+                    pix(x, y, cubemap[1].get_face(fx,fy));
+                } else {
+                    int fx = SIZE*(-p.x/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
+                    pix(x, y, cubemap[3].get_face(fx,fy));
+                }
+            }
+        }
+    }
 }
 
 /** Draw anything on the screen. */
@@ -440,6 +484,7 @@ void draw_octree() {
     traverse_zpn(cubemap[1], 2, &M, x, x+W, 0, ONE, y-W, y,-ONE, 0, 0);
     traverse_znp(cubemap[1], 3, &M, x-W, x,-ONE, 0, y, y+W, 0, ONE, 0);
     traverse_zpp(cubemap[1], 4, &M, x, x+W, 0, ONE, y, y+W, 0, ONE, 0);
+    draw_cubemap();
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 

@@ -17,24 +17,34 @@ struct quadtree {
      * The quadtree is stored in a heap-like fashion as a single array.
      * The child nodes of map[i] are map[4*i+1], ..., map[4*i+4].
      */
-    type map[N];
+    char map[N];
+    uint32_t face[SIZE*SIZE];
     
     /**
      * Sets a single value at given coordinates on the bottom level of the tree.
      */
-    void set(type x, type y, type value) {
+    void set(type x, type y) {
         for (type i=0; i<4; i++) {
             x = (x | (x << S[i])) & B[i];
             y = (y | (y << S[i])) & B[i];
         }
-        map[M + x + (y<<1)] = value;
+        map[M + x + (y<<1)] = 1;
     }
+
+    uint32_t get_face(type x, type y) {
+        for (type i=0; i<4; i++) {
+            x = (x | (x << S[i])) & B[i];
+            y = (y | (y << S[i])) & B[i];
+        }
+        return face[x + (y<<1)];
+    }    
     
     /**
      * Resets the quadtree, such that it is 0 everywhere
      */
     void clear() {
         memset(map,0,sizeof(map));
+        memset(face,0x7f,sizeof(face));
     }
     
     /** 
