@@ -157,7 +157,7 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
-typedef quadtree<10> Q;
+typedef quadtree<9> Q;
 static Q cubemap[6];
 
 /** Initialize scene. */
@@ -170,6 +170,19 @@ void init_octree () {
     M.replicate(2,6);
     
 }
+
+#define TRAVERSE_QUADTREE(traverse) \
+        /* Traverse quadtree */ \
+        int xm = (x1+x2)/2; \
+        int xmp = (x1p+x2p)/2; \
+        int ym = (y1+y2)/2; \
+        int ymp = (y1p+y2p)/2; \
+        traverse(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d ); \
+        traverse(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d ); \
+        traverse(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d ); \
+        traverse(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d ); \
+        f.compute(r);
+
 
 #define ONE SCENE_SIZE
 void traverse_zpp(
@@ -209,16 +222,7 @@ void traverse_zpp(
         traverse_zpp(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
         traverse_zpp(f, r, s->c[7], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
     } else {
-        // Traverse quadtree
-        int xm = (x1+x2)/2;
-        int xmp = (x1p+x2p)/2;
-        int ym = (y1+y2)/2;
-        int ymp = (y1p+y2p)/2;
-        traverse_zpp(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_zpp(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_zpp(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_zpp(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        f.compute(r);
+        TRAVERSE_QUADTREE(traverse_zpp);
     }
 }
 
@@ -259,16 +263,7 @@ void traverse_znp(
         traverse_znp(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
         traverse_znp(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
     } else {
-        // Traverse quadtree
-        int xm = (x1+x2)/2;
-        int xmp = (x1p+x2p)/2;
-        int ym = (y1+y2)/2;
-        int ymp = (y1p+y2p)/2;
-        traverse_znp(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_znp(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_znp(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_znp(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        f.compute(r);
+        TRAVERSE_QUADTREE(traverse_znp);
     }
 }
 
@@ -309,16 +304,7 @@ void traverse_zpn(
         traverse_zpn(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
         traverse_zpn(f, r, s->c[5], 2*x1-ONE,2*x2-ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
     } else {
-        // Traverse quadtree
-        int xm = (x1+x2)/2;
-        int xmp = (x1p+x2p)/2;
-        int ym = (y1+y2)/2;
-        int ymp = (y1p+y2p)/2;
-        traverse_zpn(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_zpn(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_zpn(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_zpn(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        f.compute(r);
+        TRAVERSE_QUADTREE(traverse_zpn);
     }
 }
 
@@ -359,16 +345,7 @@ void traverse_znn(
         traverse_znn(f, r, s->c[3], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1-ONE,2*y2-ONE,y1p,y2p,d+1);
         traverse_znn(f, r, s->c[1], 2*x1+ONE,2*x2+ONE,x1p,x2p, 2*y1+ONE,2*y2+ONE,y1p,y2p,d+1);
     } else {
-        // Traverse quadtree
-        int xm = (x1+x2)/2;
-        int xmp = (x1p+x2p)/2;
-        int ym = (y1+y2)/2;
-        int ymp = (y1p+y2p)/2;
-        traverse_znn(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d );
-        traverse_znn(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d );
-        traverse_znn(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d );
-        traverse_znn(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d );
-        f.compute(r);
+        TRAVERSE_QUADTREE(traverse_znn);
     }
 }
 
