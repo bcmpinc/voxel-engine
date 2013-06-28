@@ -167,7 +167,7 @@ void init_octree () {
     load_voxel("vxl/test.vxl");
     //load_voxel("vxl/points.vxl");
     M.average();
-    M.replicate(2,6);
+    M.replicate(0,6);
     
 }
 
@@ -187,8 +187,8 @@ struct SubFaceRenderer {
         // occlusion
         if (s==NULL) return;
         if (f.map[r]==0) return;
-        if (x2-(1-DX)*x2p<-ONE || ONE<x1-(1+DX)*x1p) return;
-        if (y2-(1-DY)*y2p<-ONE || ONE<y1-(1+DY)*y1p) return;
+        if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return;
+        if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return;
         if (x2<x1) return;
         if (y2<y1) return;
         
@@ -234,11 +234,11 @@ struct FaceRenderer {
     static_assert(AX==4 || AY==4 || AZ==4, "No x-axis.");
     static const int ONE = SCENE_SIZE;
     
-    static void render(Q& f, int x, int y, int z, int Q) {
-        SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-        SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-        SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-        SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    static void render(Q& f, int x, int y, int Q) {
+        SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(f, 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(f, 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(f, 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+        SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(f, 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
     }
 };
 
@@ -346,15 +346,18 @@ static void draw_cubemap() {
 
 /** Draw anything on the screen. */
 void draw_octree() {
-    static const int ONE = SCENE_SIZE;
     int x = position.x;
     int y = position.y;
     int z = position.z;
-    int W = SCENE_SIZE/2;
-    int Q;
+    int W = SCENE_SIZE;
     prepare_cubemap();
     
-    // x=4, y=2, z=1
+    /* x=4, y=2, z=1
+     * 
+     * 0 = neg-x, neg-y, neg-z
+     * 1 = neg-x, neg-y, pos-z
+     * ...
+     */
     
     /* Z+ face
      * 
@@ -368,11 +371,7 @@ void draw_octree() {
      * +---\+
      *      \= y+(W-z)
      */
-    Q = W-z;
-    SubFaceRenderer<-1,-1,6,4,2,1>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-    SubFaceRenderer< 1,-1,2,4,2,1>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-    SubFaceRenderer<-1, 1,4,4,2,1>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-    SubFaceRenderer< 1, 1,0,4,2,1>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    FaceRenderer<0,4,2,1>::render(cubemap[1], x, y, W-z);
 
     /* Z- face
      * 
@@ -386,13 +385,17 @@ void draw_octree() {
      * +----+= y+(W+z)
      *      
      */
-    Q = W+z;
-    SubFaceRenderer<-1,-1,3,4,2,1>::traverse(cubemap[3], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-    SubFaceRenderer< 1,-1,7,4,2,1>::traverse(cubemap[3], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-    SubFaceRenderer<-1, 1,1,4,2,1>::traverse(cubemap[3], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-    SubFaceRenderer< 1, 1,5,4,2,1>::traverse(cubemap[3], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    FaceRenderer<5,4,2,1>::render(cubemap[3],-x, y, W+z);
     
-    
+    // X+ face
+    FaceRenderer<3,1,2,4>::render(cubemap[2],-z,-y, W-x);
+    // X- face
+    FaceRenderer<6,1,2,4>::render(cubemap[4], z,-y, W+x);
+
+    // Y+ face
+    FaceRenderer<0,4,1,2>::render(cubemap[0], x, z, W-y);    
+    // Y- face
+    FaceRenderer<3,4,1,2>::render(cubemap[5], x,-z, W+y);
     
     draw_cubemap();
 }
