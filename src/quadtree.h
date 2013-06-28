@@ -3,12 +3,16 @@
 #include <cstdint>
 #include <cstring>
 
-typedef uint_fast32_t type;
-static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
-static constexpr type S[] = {8, 4, 2, 1};
+namespace quadtree_internal {
+    typedef uint_fast32_t type;
+    static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
+    static constexpr type S[] = {8, 4, 2, 1};
+}
 
 template <unsigned int dim>
 struct quadtree {
+    typedef uint_fast32_t type;
+    
     static const type N = (4<<dim<<dim)/3;
     static const type M = N/4;
     static const type L = M/4;
@@ -26,16 +30,16 @@ struct quadtree {
      */
     void set(type x, type y) {
         for (type i=0; i<4; i++) {
-            x = (x | (x << S[i])) & B[i];
-            y = (y | (y << S[i])) & B[i];
+            x = (x | (x << quadtree_internal::S[i])) & quadtree_internal::B[i];
+            y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
         }
         map[M + x + (y<<1)] = 1;
     }
 
     uint32_t get_face(type x, type y) {
         for (type i=0; i<4; i++) {
-            x = (x | (x << S[i])) & B[i];
-            y = (y | (y << S[i])) & B[i];
+            x = (x | (x << quadtree_internal::S[i])) & quadtree_internal::B[i];
+            y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
         }
         return face[x + (y<<1)];
     }    
