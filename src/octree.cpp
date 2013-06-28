@@ -163,11 +163,11 @@ static Q cubemap[6];
 /** Initialize scene. */
 void init_octree () {
     //load_voxel("vxl/sign.vxl");
-    load_voxel("vxl/mulch.vxl");
-    //load_voxel("vxl/test.vxl");
+    //load_voxel("vxl/mulch.vxl");
+    load_voxel("vxl/test.vxl");
     //load_voxel("vxl/points.vxl");
     M.average();
-    M.replicate(2,6);
+    M.replicate(0,6);
     
 }
 
@@ -217,10 +217,10 @@ struct SubFaceRenderer {
             int xmp = (x1p+x2p)/2; 
             int ym  = (y1 +y2 )/2; 
             int ymp = (y1p+y2p)/2; 
-            traverse(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d); 
-            traverse(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d); 
-            traverse(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d); 
-            traverse(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d); 
+            traverse(f, r*4+4, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d); 
+            traverse(f, r*4+5, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d); 
+            traverse(f, r*4+6, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d); 
+            traverse(f, r*4+7, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d); 
             f.compute(r);
         }
     }
@@ -235,10 +235,10 @@ struct FaceRenderer {
     static const int ONE = SCENE_SIZE;
     
     static void render(Q& f, int x, int y, int Q) {
-        SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(f, 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-        SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(f, 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-        SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(f, 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-        SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(f, 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+        SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(f, 0, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(f, 1, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(f, 2, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+        SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(f, 3, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
     }
 };
 
@@ -292,7 +292,12 @@ static void prepare_cubemap() {
         }
     }
     // build the non-leaf layers of the quadtree
-    for (int i=0; i<6; i++) cubemap[i].build(); 
+    for (int i=0; i<6; i++) {
+        cubemap[i].build(0); 
+        cubemap[i].build(1); 
+        cubemap[i].build(2); 
+        cubemap[i].build(3); 
+    }
 }
 
 static void draw_cubemap() {

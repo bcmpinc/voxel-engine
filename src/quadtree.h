@@ -13,8 +13,8 @@ template <unsigned int dim>
 struct quadtree {
     typedef uint_fast32_t type;
     
-    static const type N = (4<<dim<<dim)/3;
-    static const type M = N/4;
+    static const type N = (4<<dim<<dim)/3-1;
+    static const type M = N/4-1;
     static const type L = M/4;
     static const type SIZE = 1<<dim;
     
@@ -56,22 +56,22 @@ struct quadtree {
      * Sets given node to 1 if one of its children is nonzero. 
      */
     void compute(type i) {
-        map[i] = 
-            map[4*i+1] ||
-            map[4*i+2] ||
-            map[4*i+3] ||
-            map[4*i+4];
+        map[i] = ((int32_t*)map)[i+1]!=0;
+        /*map[i] = map[4*i+4] || 
+                 map[4*i+5] || 
+                 map[4*i+6] || 
+                 map[4*i+7];*/
     }
     
     /**
      * Ensures that a node is non-zero if one of its children is nonzero.
      */
-    void build(type i=0) {
+    void build(type i) {
         if (i<L) {
-            build(4*i+1);
-            build(4*i+2);
-            build(4*i+3);
             build(4*i+4);
+            build(4*i+5);
+            build(4*i+6);
+            build(4*i+7);
         }
         compute(i);
     }
