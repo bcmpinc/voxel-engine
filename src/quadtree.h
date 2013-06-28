@@ -15,7 +15,7 @@ struct quadtree {
     
     static const type N = (4<<dim<<dim)/3-1;
     static const type M = N/4-1;
-    static const type L = M/4;
+    static const type L = M/4-1;
     static const type SIZE = 1<<dim;
     
     /** 
