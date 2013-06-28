@@ -171,63 +171,60 @@ void init_octree () {
     
 }
 
-#define TRAVERSE_QUADTREE(traverse) \
-        /* Traverse quadtree */ \
-        int xm = (x1+x2)/2; \
-        int xmp = (x1p+x2p)/2; \
-        int ym = (y1+y2)/2; \
-        int ymp = (y1p+y2p)/2; \
-        traverse(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d ); \
-        traverse(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d ); \
-        traverse(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d ); \
-        traverse(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d ); \
-        f.compute(r);
-
-
-#define ONE SCENE_SIZE
 template<int DX, int DY, int C0, int C1, int C2, int C3, int C4, int C5, int C6, int C7>
-void traverse(
-    Q& f, unsigned int r, octree * s, 
-    int x1, int x2, int x1p, int x2p, 
-    int y1, int y2, int y1p, int y2p,
-    int d
-){
+struct Renderer {
     static_assert(DX==1 || DX==-1, "Wrong DX");
     static_assert(DY==1 || DY==-1, "Wrong DY");
-    assert(r<Q::N);
-     //((uint32_t*)f->pixels)[512+(rx<<(9-rd))+1024*(ry<<(9-rd))] = rd*0x1c1c1c;
+    static const int ONE = SCENE_SIZE;
+    static void traverse(
+        Q& f, unsigned int r, octree * s, 
+        int x1, int x2, int x1p, int x2p, 
+        int y1, int y2, int y1p, int y2p,
+        int d
+    ){
+        assert(r<Q::N);
+            
+        // occlusion
+        if (s==NULL) return;
+        if (f.map[r]==0) return;
+        if (x2-(1-DX)*x2p<-ONE || ONE<x1-(1+DX)*x1p) return;
+        if (y2-(1-DY)*y2p<-ONE || ONE<y1-(1+DY)*y1p) return;
+        if (x2<x1) return;
+        if (y2<y1) return;
         
-    // occlusion
-    if (s==NULL) return;
-    if (f.map[r]==0) return;
-    if (x2-(1-DX)*x2p<-ONE || ONE<x1-(1+DX)*x1p) return;
-    if (y2-(1-DY)*y2p<-ONE || ONE<y1-(1+DY)*y1p) return;
-    if (x2<x1) return;
-    if (y2<y1) return;
-    
-    // rendering
-    if (r>=Q::M) {
-        f.face[r-Q::M] = s->avgcolor;
-        f.map[r] = 0;
-        return;
+        // rendering
+        if (r>=Q::M) {
+            f.face[r-Q::M] = s->avgcolor;
+            f.map[r] = 0;
+            return;
+        }
+        
+        // Recursion
+        if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
+            // Traverse octree
+            // x4 y2 z1
+            traverse(f, r, s->c[C0], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C1], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C2], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C3], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C4], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C5], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C6], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C7], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
+        } else {
+            /* Traverse quadtree */ 
+            int xm  = (x1 +x2 )/2; 
+            int xmp = (x1p+x2p)/2; 
+            int ym  = (y1 +y2 )/2; 
+            int ymp = (y1p+y2p)/2; 
+            traverse(f, r*4+1, s, x1, xm, x1p, xmp, y1, ym, y1p, ymp, d); 
+            traverse(f, r*4+2, s, xm, x2, xmp, x2p, y1, ym, y1p, ymp, d); 
+            traverse(f, r*4+3, s, x1, xm, x1p, xmp, ym, y2, ymp, y2p, d); 
+            traverse(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d); 
+            f.compute(r);
+        }
     }
-    
-    // Recursion
-    if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
-        // Traverse octree
-        // x4 y2 z1
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C0], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C1], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C2], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C3], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C4], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C5], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C6], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
-        traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>(f, r, s->c[C7], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
-    } else {
-        TRAVERSE_QUADTREE((traverse<DX,DY,C0,C1,C2,C3,C4,C5,C6,C7>))
-    }
-}
+};
 
 static void prepare_cubemap() {
     const int SIZE = Q::SIZE;
@@ -333,14 +330,51 @@ static void draw_cubemap() {
 
 /** Draw anything on the screen. */
 void draw_octree() {
+    static const int ONE = SCENE_SIZE;
     int x = position.x;
     int y = position.y;
-    int W = SCENE_SIZE/2 - position.z;
+    int z = position.z;
+    int W = SCENE_SIZE/2;
+    int Q;
     prepare_cubemap();
-    traverse<-1,-1,6,4,2,0,7,5,3,1>(cubemap[1], 1, &M, x-W, x,-ONE, 0, y-W, y,-ONE, 0, 0);
-    traverse< 1,-1,2,0,6,4,3,1,7,5>(cubemap[1], 2, &M, x, x+W, 0, ONE, y-W, y,-ONE, 0, 0);
-    traverse<-1, 1,4,6,0,2,5,7,1,3>(cubemap[1], 3, &M, x-W, x,-ONE, 0, y, y+W, 0, ONE, 0);
-    traverse< 1, 1,0,2,4,6,1,3,5,7>(cubemap[1], 4, &M, x, x+W, 0, ONE, y, y+W, 0, ONE, 0);
+    
+    // x=4, y=2, z=1
+    
+    /* Z+ face
+     * 
+     *-W----W
+     * 
+     * +-z--+= y-(W-z)
+     * |   /| 
+     * y  / |
+     * | .  |
+     * |  \ |
+     * +---\+
+     *      \= y+(W-z)
+     */
+    Q = W-z;
+    Renderer<-1,-1,6,4,2,0,7,5,3,1>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+    Renderer< 1,-1,2,0,6,4,3,1,7,5>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+    Renderer<-1, 1,4,6,0,2,5,7,1,3>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+    Renderer< 1, 1,0,2,4,6,1,3,5,7>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    
+    /* Z- face
+     * 
+     *-W----W
+     * 
+     * +-z--+
+     * \    |= y-(W+z)
+     * y\   |
+     * | .  |
+     * |/   |
+     * +----+= y+(W+z)
+     *      
+     */
+    Q = W+z;
+    Renderer<-1,-1,3,1,7,5,2,0,6,4>::traverse(cubemap[3], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+    Renderer< 1,-1,7,5,3,1,6,4,2,0>::traverse(cubemap[3], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+    Renderer<-1, 1,1,3,5,7,0,2,4,6>::traverse(cubemap[3], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+    Renderer< 1, 1,5,7,1,3,4,6,0,2>::traverse(cubemap[3], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
     draw_cubemap();
 }
 
