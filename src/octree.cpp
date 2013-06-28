@@ -171,8 +171,8 @@ void init_octree () {
     
 }
 
-template<int DX, int DY, int C0, int C1, int C2, int C3, int C4, int C5, int C6, int C7>
-struct Renderer {
+template<int DX, int DY, int C, int AX, int AY, int AZ>
+struct SubFaceRenderer {
     static_assert(DX==1 || DX==-1, "Wrong DX");
     static_assert(DY==1 || DY==-1, "Wrong DY");
     static const int ONE = SCENE_SIZE;
@@ -203,14 +203,14 @@ struct Renderer {
         if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE && d < 20) {
             // Traverse octree
             // x4 y2 z1
-            traverse(f, r, s->c[C0], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C1], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C2], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C3], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C4], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C5], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C6], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
-            traverse(f, r, s->c[C7], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C         ], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C^AX      ], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)+DY*ONE,2*(y2-y2p)+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C   ^AY   ], 2*(x1-x1p)+DX*ONE,2*(x2-x2p)+DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C^AX^AY   ], 2*(x1-x1p)-DX*ONE,2*(x2-x2p)-DX*ONE,x1p,x2p, 2*(y1-y1p)-DY*ONE,2*(y2-y2p)-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C      ^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C^AX   ^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C   ^AY^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
+            traverse(f, r, s->c[C^AX^AY^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p,d+1);
         } else {
             /* Traverse quadtree */ 
             int xm  = (x1 +x2 )/2; 
@@ -223,6 +223,22 @@ struct Renderer {
             traverse(f, r*4+4, s, xm, x2, xmp, x2p, ym, y2, ymp, y2p, d); 
             f.compute(r);
         }
+    }
+};
+
+template<int C, int AX, int AY, int AZ>
+struct FaceRenderer {
+    static_assert(0<=C && C<8, "Invalid C");
+    static_assert(AX==1 || AY==1 || AZ==1, "No z-axis.");
+    static_assert(AX==2 || AY==2 || AZ==2, "No y-axis.");
+    static_assert(AX==4 || AY==4 || AZ==4, "No x-axis.");
+    static const int ONE = SCENE_SIZE;
+    
+    static void render(Q& f, int x, int y, int z, int Q) {
+        SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+        SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+        SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
     }
 };
 
@@ -353,11 +369,11 @@ void draw_octree() {
      *      \= y+(W-z)
      */
     Q = W-z;
-    Renderer<-1,-1,6,4,2,0,7,5,3,1>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-    Renderer< 1,-1,2,0,6,4,3,1,7,5>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-    Renderer<-1, 1,4,6,0,2,5,7,1,3>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-    Renderer< 1, 1,0,2,4,6,1,3,5,7>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
-    
+    SubFaceRenderer<-1,-1,6,4,2,1>::traverse(cubemap[1], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+    SubFaceRenderer< 1,-1,2,4,2,1>::traverse(cubemap[1], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+    SubFaceRenderer<-1, 1,4,4,2,1>::traverse(cubemap[1], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+    SubFaceRenderer< 1, 1,0,4,2,1>::traverse(cubemap[1], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+
     /* Z- face
      * 
      *-W----W
@@ -371,10 +387,13 @@ void draw_octree() {
      *      
      */
     Q = W+z;
-    Renderer<-1,-1,3,1,7,5,2,0,6,4>::traverse(cubemap[3], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-    Renderer< 1,-1,7,5,3,1,6,4,2,0>::traverse(cubemap[3], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-    Renderer<-1, 1,1,3,5,7,0,2,4,6>::traverse(cubemap[3], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-    Renderer< 1, 1,5,7,1,3,4,6,0,2>::traverse(cubemap[3], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    SubFaceRenderer<-1,-1,3,4,2,1>::traverse(cubemap[3], 1, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+    SubFaceRenderer< 1,-1,7,4,2,1>::traverse(cubemap[3], 2, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+    SubFaceRenderer<-1, 1,1,4,2,1>::traverse(cubemap[3], 3, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+    SubFaceRenderer< 1, 1,5,4,2,1>::traverse(cubemap[3], 4, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+    
+    
+    
     draw_cubemap();
 }
 
