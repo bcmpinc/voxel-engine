@@ -71,12 +71,7 @@ int main(int argc, char *argv[]) {
     while (!quit) {
         Timer t;
         if (moves) {
-            //clear_screen(0x8080b0);
-            //draw_cubemap(back);
             draw_octree();
-            draw_box();
-            //draw_axis();
-            //draw_cube();
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

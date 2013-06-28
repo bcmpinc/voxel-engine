@@ -3,11 +3,12 @@
 #include <cstdint>
 #include <cstring>
 
+typedef uint_fast32_t type;
+static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
+static constexpr type S[] = {8, 4, 2, 1};
+
 template <unsigned int dim>
 struct quadtree {
-    typedef uint_fast32_t type;
-    static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
-    static constexpr type S[] = {8, 4, 2, 1};
     static const type N = (4<<dim<<dim)/3;
     static const type M = N/4;
     static const type L = M/4;

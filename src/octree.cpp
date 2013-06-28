@@ -144,7 +144,7 @@ static void load_voxel(const char * filename) {
     // Open the file
     FILE * f = fopen(filename, "r");
     assert(f != NULL);
-    int cnt=2000000;
+    int cnt=10000000;
 
     // Read voxels and store them 
     for (int i=0; i<cnt; i++) {
@@ -157,17 +157,17 @@ static void load_voxel(const char * filename) {
     fclose(f);
 }
 
-typedef quadtree<9> Q;
+typedef quadtree<10> Q;
 static Q cubemap[6];
 
 /** Initialize scene. */
 void init_octree () {
     //load_voxel("vxl/sign.vxl");
-    //load_voxel("vxl/mulch.vxl");
-    load_voxel("vxl/test.vxl");
+    load_voxel("vxl/mulch.vxl");
+    //load_voxel("vxl/test.vxl");
     //load_voxel("vxl/points.vxl");
     M.average();
-    M.replicate(0,6);
+    M.replicate(2,6);
     
 }
 
