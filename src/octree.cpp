@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <list>
 #include <SDL_video.h>
 
 #include "art.h"
@@ -18,144 +19,128 @@ static const int64_t SCENE_SIZE = 1 << OCTREE_DEPTH;
 using std::max;
 using std::min;
 
-
 /** A node in an octree. */
 struct octree {
     octree * c[8];
     int avgcolor;
     bool leaf;
-    octree() : c{0,0,0,0,0,0,0,0}, avgcolor(0) {   
-    }
-    ~octree() { 
-        for (int i=0; i<8; i++) {
-            if(c[i]==this) c[i] = NULL;
-            else for (int j=i+1; j<8; j++)
-                if(c[i]==c[j]) c[j] = NULL;
-        }
-        for (int i=0; i<8; i++) delete c[i]; 
-    }
-    void set(int x, int y, int z, int depth, int color) {
-        if (depth==0) {
-            avgcolor = color;   
-        } else {
-            depth--;
-            assert(depth>=0);
-            assert(depth<30);
-            int mask = 1 << depth;
-            int idx = ((x&mask) * 4 + (y&mask) * 2 + (z&mask)) >> depth;
-            assert(idx>=0);
-            assert(idx<8);
-            if (c[idx]==NULL) c[idx] = new octree;
-            c[idx]->set(x,y,z, depth, color);
-        }
-    }
-    void average() {
-        leaf=true;
-        for (int i=0; i<8; i++) {
-            if(c[i]) {
-                c[i]->average();
-                leaf = false;
-            }
-        }
-        if (leaf) {
-            for (int i=0; i<8; i++) {
-                c[i]=this;
-            }
-            return;
-        }
-        float r=0, g=0, b=0;
-        int n=0;
-        for (int i=0; i<8; i++) {
-            if(c[i]) {
-                int v = c[i]->avgcolor;
-                r += (v&0xff0000)>>16;
-                g += (v&0xff00)>>8;
-                b += (v&0xff);
-                n++;
-            }
-        }
-        if (n>1 || !PRUNE_NODES) {
-            avgcolor = rgb(r/n,g/n,b/n);
-        } else {
-            // Prune single nodes.
-            for (int i=0; i<8; i++) {
-                if(c[i]) {
-                    avgcolor = c[i]->avgcolor;
-                    if (c[i]->leaf) {
-                        delete c[i];
-                        c[i] = NULL;
-                    }
-                }
-            }            
-        }
-    }
-    void replicate(int mask=2, int depth=0) {
-        if (depth<=0) return;
-        for (int i=0; i<8; i++) {
-            if (i == (i&mask)) {
-                if (c[i]) c[i]->replicate(mask, depth-1);
-            } else {
-                c[i] = c[i&mask];
-            }
-        }
-    }
-    void draw(int64_t x, int64_t y, int64_t z, int64_t scale) {
-        scale--;
-        int64_t sscale = 1<<scale;
-        x-=sscale;
-        y-=sscale;
-        z-=sscale;
-        if (
-            !leaf &&
-            abs(x) < (sscale*250) &&
-            abs(y) < (sscale*250) &&
-            abs(z) < (sscale*250) &&
-            scale > 0 
-        ) {
-            for (int i=0; i<8; i++) {
-                if(c[i]) {
-                    c[i]->draw(
-                        x+(((i&4)>>2)<<scale),
-                        y+(((i&2)>>1)<<scale),
-                        z+(((i&1)>>0)<<scale), 
-                    scale);
-                }
-            }
-        } else {
-            glm::dvec3 n = orientation * glm::dvec3(x,y,z);
-            if (n.z>1e-10) {
-                int64_t px = SCREEN_WIDTH/2  + n.x*SCREEN_HEIGHT/n.z;
-                int64_t py = SCREEN_HEIGHT/2 - n.y*SCREEN_HEIGHT/n.z;
-                pix(px, py, avgcolor);
-                /*pix(px+1, py+1, mz, avgcolor);
-                pix(px-1, py+1, mz, avgcolor);
-                pix(px-1, py-1, mz, avgcolor);
-                pix(px+1, py-1, mz, avgcolor);
-                pos.points_rendered++;*/
-            }
-        }
-    }
+    octree() : c{0,0,0,0,0,0,0,0}, avgcolor(0) {}
+    void set(int x, int y, int z, int depth, int color);
+    void average();
+    void replicate(int mask=2, int depth=0);
 };
 
+struct octree_buffer {
+    const int N = 65536;
+    std::list<octree*> list;
+    int i;    
+    octree_buffer() : i(N) {}
+    ~octree_buffer() {
+        for (octree* ptr : list) {
+            delete[](ptr); 
+        }
+    }
+    inline octree* allocate() {
+        i++;
+        if (i>=N) {
+            list.push_back(new octree[N]);
+            i=0;
+        }
+        return list.back() + i;
+    }
+} octree_buffer;
+
+void octree::set(int x, int y, int z, int depth, int color) {
+    if (depth==0) {
+        avgcolor = color;   
+    } else {
+        depth--;
+        assert(depth>=0);
+        assert(depth<30);
+        int mask = 1 << depth;
+        int idx = ((x&mask) * 4 + (y&mask) * 2 + (z&mask)) >> depth;
+        assert(idx>=0);
+        assert(idx<8);
+        if (c[idx]==NULL) c[idx] = octree_buffer.allocate();
+        c[idx]->set(x,y,z, depth, color);
+    }
+}
+void octree::average() {
+    leaf=true;
+    for (int i=0; i<8; i++) {
+        if(c[i]) {
+            c[i]->average();
+            leaf = false;
+        }
+    }
+    if (leaf) {
+        for (int i=0; i<8; i++) {
+            c[i]=this;
+        }
+        return;
+    }
+    float r=0, g=0, b=0;
+    int n=0;
+    for (int i=0; i<8; i++) {
+        if(c[i]) {
+            int v = c[i]->avgcolor;
+            r += (v&0xff0000)>>16;
+            g += (v&0xff00)>>8;
+            b += (v&0xff);
+            n++;
+        }
+    }
+    if (n>1 || !PRUNE_NODES) {
+        avgcolor = rgb(r/n,g/n,b/n);
+    } else {
+        // Prune single nodes.
+        for (int i=0; i<8; i++) {
+            if(c[i]) {
+                avgcolor = c[i]->avgcolor;
+                if (c[i]->leaf) {
+                    delete c[i];
+                    c[i] = NULL;
+                }
+            }
+        }            
+    }
+}
+void octree::replicate(int mask, int depth) {
+    if (depth<=0) return;
+    for (int i=0; i<8; i++) {
+        if (i == (i&mask)) {
+            if (c[i]) c[i]->replicate(mask, depth-1);
+        } else {
+            c[i] = c[i&mask];
+        }
+    }
+}
+
 /** Le scene. */
-static octree M;
+static octree * M;
 
 /** Reads in the voxel. */
-static void load_voxel(const char * filename) {
+static void load_voxel(const char * filename, int depth, int rep_mask, int rep_depth, int ds=0) {
     // Open the file
     FILE * f = fopen(filename, "r");
     assert(f != NULL);
-    int cnt=10000000;
+    int cnt=200000000;
+    M = octree_buffer.allocate();
 
     // Read voxels and store them 
-    for (int i=0; i<cnt; i++) {
+    int i;
+    for (i=0; i<cnt; i++) {
+        if (i%(1<<20)==0) printf("Loaded %dMi points\n", i>>20);
         int x,y,z,c;
         int res = fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
         if (res<4) break;
         c=((c&0xff)<<16)|(c&0xff00)|((c&0xff0000)>>16)|0xff000000;
-        M.set(x,y,z,OCTREE_DEPTH,c);
+        M->set(x>>ds,y>>ds,z>>ds,depth-ds,c);
     }
     fclose(f);
+    printf("Loaded %dMi points\n", i>>20);
+    M->average();
+    M->replicate(rep_mask,rep_depth);
 }
 
 typedef quadtree<10> Q;
@@ -164,12 +149,10 @@ static Q cubemap[6];
 /** Initialize scene. */
 void init_octree () {
     Timer t;
-    //load_voxel("vxl/sign.vxl");
-    //load_voxel("vxl/mulch.vxl");
-    load_voxel("vxl/test.vxl");
-    //load_voxel("vxl/points.vxl");
-    M.average();
-    M.replicate(0,6);
+    //load_voxel("vxl/sign.vxl",  6,           2,2);
+    //load_voxel("vxl/mulch.vxl", OCTREE_DEPTH,2,6);
+    //load_voxel("vxl/test.vxl",  OCTREE_DEPTH,2,6);
+    load_voxel("vxl/points.vxl",OCTREE_DEPTH,7,0,7);
     printf("Model loaded in %6.2fms.\n", t.elapsed());
 
     // Reset the quadtrees
@@ -248,10 +231,10 @@ struct FaceRenderer {
     static const int ONE = SCENE_SIZE;
     
     static void render(Q& f, int x, int y, int Q) {
-        if (f.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(f, 0, &M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
-        if (f.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(f, 1, &M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
-        if (f.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(f, 2, &M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
-        if (f.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(f, 3, &M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
+        if (f.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(f, 0, M, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0, 0);
+        if (f.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(f, 1, M, x, x+Q, 0, ONE, y-Q, y,-ONE, 0, 0);
+        if (f.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(f, 2, M, x-Q, x,-ONE, 0, y, y+Q, 0, ONE, 0);
+        if (f.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(f, 3, M, x, x+Q, 0, ONE, y, y+Q, 0, ONE, 0);
     }
 };
 
