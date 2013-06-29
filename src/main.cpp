@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
 
     init_octree();
     
-    SDL_Surface * back[6];
-    load_cubemap(back);
+    //SDL_Surface * back[6];
+    //load_cubemap(back);
 
     // mainloop
     while (!quit) {

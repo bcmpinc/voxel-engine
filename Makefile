@@ -42,6 +42,7 @@ endef
 # Target definitions
 $(eval $(call target,voxel,main events art timing octree))
 $(eval $(call target,convert,convert))
+$(eval $(call target,convert2,convert2))
 $(eval $(call target,heightmap,heightmap))
 
 # Dependencies
