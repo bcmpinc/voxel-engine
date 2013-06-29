@@ -48,7 +48,7 @@ struct quadtree {
     /**
      * Resets the quadtree, such that it is 0 everywhere
      */
-    void clear() {
+    quadtree() {
         memset(map,0,sizeof(map));
     }
     

@@ -9,26 +9,22 @@
 #include "timing.h"
 #include "events.h"
 #include "art.h"
-
-void init_octree();
-void draw_octree();
+#include "octree.h"
 
 using namespace std;
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     
     position = glm::dvec3(0, -1000000, 0);
-    init_octree();
+    octree * root = init_octree();
     
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            draw_octree();
+            draw_octree(root);
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);
