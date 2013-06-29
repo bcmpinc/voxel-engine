@@ -11,9 +11,9 @@
 
 void open_file(char * name) {
   // Determine the file names.
-  int length=strlen(name)+5;
-  char infile[length];
-  char outfile[length];
+  int length=strlen(name);
+  char infile[length+11];
+  char outfile[length+9];
   sprintf(infile, "input/%s.xyz", name);
   sprintf(outfile, "vxl/%s.vxl", name);
   
@@ -38,8 +38,6 @@ int main(int argc, char ** argv) {
   }
   open_file(argv[1]);
 
-  char header[1000];
-  fgets(header,1000,stdin);
   double x,y,z;
   int r,g,b;
   int minx= 1e9,miny= 1e9,minz= 1e9;

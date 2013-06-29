@@ -1,8 +1,10 @@
 #include <cstdio>
+#include <cassert>
 #include <list>
 
 #include "art.h"
 #include "timing.h"
+#include "pointset.h"
 #include "octree.h"
 
 using std::max;
@@ -30,10 +32,13 @@ struct octree_buffer {
     }
 } octree_buffer;
 
-void octree::set(int x, int y, int z, int depth, int color) {
+void octree::set(uint32_t x, uint32_t y, uint32_t z, uint32_t depth, uint32_t color) {
     depth--;
-    assert(depth>=0);
-    assert(depth<30);
+    assert(depth<OCTREE_DEPTH);
+    assert(x<SCENE_SIZE);
+    assert(y<SCENE_SIZE);
+    assert(z<SCENE_SIZE);
+    assert(color<0x1000000);
     int mask = 1 << depth;
     int idx = ((x&mask) * 4 + (y&mask) * 2 + (z&mask)) >> depth;
     assert(idx>=0);
@@ -45,7 +50,7 @@ void octree::set(int x, int y, int z, int depth, int color) {
         c[idx]->set(x,y,z, depth, color);
     }
 }
-int octree::average() {
+uint32_t octree::average() {
     for (int i=0; i<8; i++) {
         if(c[i]) {
             avgcolor[i] = c[i]->average();
@@ -64,9 +69,9 @@ int octree::average() {
     }
     return rgb(r/n,g/n,b/n);
 }
-void octree::replicate(int mask, int depth) {
+void octree::replicate(uint32_t mask, uint32_t depth) {
     if (depth<=0) return;
-    for (int i=0; i<8; i++) {
+    for (uint32_t i=0; i<8; i++) {
         if (i == (i&mask)) {
             if (c[i]) c[i]->replicate(mask, depth-1);
         } else {
@@ -79,22 +84,16 @@ void octree::replicate(int mask, int depth) {
 /** Reads in the voxel. */
 static octree * load_voxel(const char * filename, int depth, int rep_mask, int rep_depth, int ds=0) {
     // Open the file
-    FILE * f = fopen(filename, "r");
-    assert(f != NULL);
-    int cnt=200000000;
+    pointset in(filename, false);
     octree * root = octree_buffer.allocate();
 
     // Read voxels and store them 
-    int i;
-    for (i=0; i<cnt; i++) {
+    uint32_t i;
+    for (i=0; i<in.length; i++) {
         if (i%(1<<20)==0) printf("Loaded %dMi points (%dMiB)\n", i>>20, octree_buffer.mc);
-        int x,y,z,c;
-        int res = fscanf(f, "%d %d %d %x", &x, &y, &z, &c);
-        if (res<4) break;
-        c = ((c&0xff)<<16)|(c&0xff00)|((c&0xff0000)>>16);
-        root->set(x>>ds,y>>ds,z>>ds,depth-ds,c);
+        point p(in.list[i]);
+        root->set(p.x>>ds,p.y>>ds,p.z>>ds,depth-ds,p.c);
     }
-    fclose(f);
     printf("Loaded %dMi points (%dMiB)\n", i>>20, octree_buffer.mc);
     root->average();
     root->replicate(rep_mask,rep_depth);
@@ -105,10 +104,10 @@ static octree * load_voxel(const char * filename, int depth, int rep_mask, int r
 octree * init_octree() {
     Timer t;
     octree * root =
-    load_voxel("vxl/sign.vxl",  6,           2,2);
+    //load_voxel("vxl/sign.vxl",  6,           2,2);
     //load_voxel("vxl/mulch.vxl", OCTREE_DEPTH,2,6);
     //load_voxel("vxl/test.vxl",  OCTREE_DEPTH,2,6);
-    //load_voxel("vxl/points.vxl",OCTREE_DEPTH,7,0,7);
+    load_voxel("vxl/points.vxl",OCTREE_DEPTH,7,0,7);
     //load_voxel("vxl/tower.vxl", OCTREE_DEPTH,7,0,4);
     printf("Model loaded in %6.2fms.\n", t.elapsed());
     return root;

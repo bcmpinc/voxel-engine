@@ -43,17 +43,17 @@ void flip_screen() {
     SDL_Flip (screen);
 }
 
-void pix(int64_t x, int64_t y, int c) {
+void pix(uint32_t x, uint32_t y, uint32_t c) {
     if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
         int64_t i = x+y*(SCREEN_WIDTH);
         pixs[i] = c;
     }
 }
 #define CLAMP(x,l,u) (x<l?l:x>u?u:x)
-int rgb(int r, int g, int b) {
+uint32_t rgb(uint32_t r, uint32_t g, uint32_t b) {
     return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
 }
-int rgb(float r, float g, float b) {
-    return rgb((int)(r+0.5),(int)(g+0.5),(int)(b+0.5));
+uint32_t rgb(float r, float g, float b) {
+    return rgb((uint32_t)(r+0.5),(uint32_t)(g+0.5),(uint32_t)(b+0.5));
 }
 

@@ -9,4 +9,7 @@ vox
 .*
 !.gitignore
 *.gz
-
+/img1
+/img2
+/shots
+/vxl

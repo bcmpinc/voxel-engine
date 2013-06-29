@@ -16,8 +16,8 @@ SDL_PixelFormat fmt = {
 
 int main() {
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/test.png"), &fmt, SDL_SWSURFACE);
-  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/test-h.png"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/mulch-tiled.jpeg"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/mulch-heightmap.png"), &fmt, SDL_SWSURFACE);
   
   assert(texture);
   assert(height);
