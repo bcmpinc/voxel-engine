@@ -34,6 +34,7 @@ struct quadtree {
             y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
         }
         map[M + x + (y<<1)] = 1;
+        face[x + (y<<1)] = 0x3f7fff;
     }
 
     uint32_t get_face(type x, type y) {
@@ -49,18 +50,13 @@ struct quadtree {
      */
     void clear() {
         memset(map,0,sizeof(map));
-        memset(face,0x7f,sizeof(face));
     }
     
     /** 
      * Sets given node to 1 if one of its children is nonzero. 
      */
     void compute(type i) {
-        map[i] = ((int32_t*)map)[i+1]!=0;
-        /*map[i] = map[4*i+4] || 
-                 map[4*i+5] || 
-                 map[4*i+6] || 
-                 map[4*i+7];*/
+        if (((int32_t*)map)[i+1]==0) map[i] = 0;
     }
     
     /**
@@ -73,7 +69,7 @@ struct quadtree {
             build(4*i+6);
             build(4*i+7);
         }
-        compute(i);
+        map[i] = ((int32_t*)map)[i+1]!=0;
     }
 };
 

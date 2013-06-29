@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);
-            printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
-                   position.x,position.y,position.z, eye.x,eye.y,eye.z);
+            //printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
+            //       position.x,position.y,position.z, eye.x,eye.y,eye.z);
             fflush(stdout);
         }
         next_frame(t.elapsed());

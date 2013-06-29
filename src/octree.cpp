@@ -9,6 +9,7 @@
 #include "art.h"
 #include "events.h"
 #include "quadtree.h"
+#include "timing.h"
 
 static const bool PRUNE_NODES = false;
 static const int OCTREE_DEPTH = 20;
@@ -162,13 +163,17 @@ static Q cubemap[6];
 
 /** Initialize scene. */
 void init_octree () {
+    Timer t;
     //load_voxel("vxl/sign.vxl");
     //load_voxel("vxl/mulch.vxl");
     load_voxel("vxl/test.vxl");
     //load_voxel("vxl/points.vxl");
     M.average();
     M.replicate(0,6);
-    
+    printf("Model loaded in %6.2fms.\n", t.elapsed());
+
+    // Reset the quadtrees
+    for (int i=0; i<6; i++) cubemap[i].clear();
 }
 
 template<int DX, int DY, int C, int AX, int AY, int AZ>
@@ -252,8 +257,6 @@ struct FaceRenderer {
 
 static void prepare_cubemap() {
     const int SIZE = Q::SIZE;
-    // Reset the quadtrees
-    for (int i=0; i<6; i++) cubemap[i].clear();
     // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
     double fov = 1.0/SCREEN_HEIGHT;
@@ -363,7 +366,10 @@ void draw_octree() {
     int y = position.y;
     int z = position.z;
     int W = SCENE_SIZE;
+
+    Timer t1;
     prepare_cubemap();
+    double d1 = t1.elapsed();
     
     /* x=4, y=2, z=1
      * 
@@ -372,6 +378,7 @@ void draw_octree() {
      * ...
      */
     
+    Timer t2;
     /* Z+ face
      * 
      *-W----W
@@ -409,8 +416,13 @@ void draw_octree() {
     FaceRenderer<0,4,1,2>::render(cubemap[0], x, z, W-y);    
     // Y- face
     FaceRenderer<3,4,1,2>::render(cubemap[5], x,-z, W+y);
-    
+    double d2 = t2.elapsed();
+
+    Timer t3;
     draw_cubemap();
+    double d3 = t3.elapsed();
+    
+    printf("%6.2f | %6.2f %6.2f %6.2f\n", t1.elapsed(), d1,d2,d3);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
