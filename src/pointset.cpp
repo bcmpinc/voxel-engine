@@ -27,17 +27,29 @@ pointset::~pointset() {
         close(fd);
 }
 
+static const int point_buffer_size = 1<<16;
 pointfile::pointfile(const char* filename) {
-    fd = open(filename, O_WRONLY | O_CREAT, 0644);
+    fd = open(filename, O_WRONLY | O_TRUNC | O_CREAT, 0644);
     if (fd == -1) throw std::runtime_error("Could not open/create file");
-    ftruncate(fd, 0);
+    buffer = new point[point_buffer_size];
+    if (!buffer) {
+        fprintf(stderr, "Could not allocate larger file buffer");
+    }
+    cnt = 0;
 }
 
 pointfile::~pointfile() {
+    write(fd, buffer, cnt * sizeof(point));
+    free(buffer);
     if (fd!=-1)
         close(fd);
 }
 
 void pointfile::add(const point& p) {
-    write(fd, &p, sizeof(p));
+    buffer[cnt] = p;
+    cnt++;
+    if (cnt >= point_buffer_size) {
+        write(fd, buffer, point_buffer_size * sizeof(point));
+        cnt = 0;
+    }
 }

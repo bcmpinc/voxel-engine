@@ -28,6 +28,8 @@ struct pointset {
  */
 struct pointfile {
     int32_t fd;
+    point * buffer;
+    int cnt;
     pointfile(const char* filename);
     ~pointfile();
     void add(const point &p);
