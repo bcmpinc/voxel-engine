@@ -2,10 +2,12 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <cassert>
 #include <algorithm>
 
 #include "pointset.h"
 #include "timing.h"
+#include "octree.h"
 
 static constexpr uint64_t B[] = {
   0xFFFF00000000FFFF, 
@@ -75,9 +77,28 @@ bool hilbert3d_compare( const point & p1,const point & p2 ) {
 
 int main(int argc, char ** argv){
   Timer t;
-  if (argc != 2) {
-    fprintf(stderr,"Please specify the file to convert (without '.vxl').\n");
+  if (argc != 2 && argc != 4) {
+    fprintf(stderr,"Please specify the file to convert (without '.vxl') and optionally repeat mask & depth.\n");
     exit(2);
+  }
+  
+  // Determine repeat arguments
+  int repeat_mask=7;
+  int repeat_depth=0;
+  if (argc == 4) {
+    char * endptr = NULL;
+    repeat_mask  = strtol(argv[2], &endptr, 10);
+    if (errno) {perror("Could not parse mask"); exit(1);}
+    assert(endptr);
+    assert(endptr[0]==0);
+    assert(repeat_mask>=0 && repeat_mask<8);
+    repeat_depth = strtol(argv[3], &endptr, 10);
+    if (errno) {perror("Could not parse depth"); exit(1);}
+    assert(endptr);
+    assert(endptr[0]==0);
+    assert(repeat_depth>=0 && repeat_depth<16);
+    int dirs = __builtin_popcount(7^repeat_mask);
+    printf("[%10.0f] Result cloned %d times at %d layers in %s%s%s direction(s).\n", t.elapsed(), 1<<dirs*repeat_depth, repeat_depth, repeat_mask&4?"":"X", repeat_mask&2?"":"Y", repeat_mask&1?"":"Z");
   }
 
   // Determine the file names.
@@ -90,6 +111,7 @@ int main(int argc, char ** argv){
   
   printf("[%10.0f] Opening '%s'.\n", t.elapsed(), infile);
   pointset p(infile, true);
+  
   printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), p.length);
   int64_t old = 0;
   for (uint64_t i=0; i<p.length; i++) {
@@ -105,6 +127,45 @@ int main(int argc, char ** argv){
     }
     old = cur;
   }
+  
+  printf("[%10.0f] Counting nodes per layer.\n", t.elapsed());
+  uint64_t nodecount[20];
+  int64_t maxnode=0;
+  for (int j=0; j<20; j++) nodecount[j]=0;
+  old = -1;
+  for (uint64_t i=0; i<p.length; i++) {
+    if (i && (i&0x3fffff)==0) {
+      printf("[%10.0f] Counting ... %6.2f%%.\n", t.elapsed(), i*100.0/p.length);
+    }
+    point q = p.list[i];
+    int64_t cur = morton3d(q.x, q.y, q.z);
+    for (int j=0; j<20; j++) {
+      if ((cur>>j*3)!=(old>>j*3)) {
+        nodecount[19-j]++;
+      }
+    }
+    old = cur;
+    if (maxnode<cur)
+      maxnode=cur;
+  }
+  printf("[%10.0f] Counting layers (maxnode=0x%lx).\n", t.elapsed(), maxnode);
+  int layers=0;
+  while(maxnode>>layers*3) layers++;
+  printf("[%10.0f] Found 1 leaf layer + %d data layers + %d repetition layers.\n", t.elapsed(), layers, repeat_depth);
+  int nonlayers=19-layers-repeat_depth;
+  assert(nonlayers>=0);
+  
+  uint64_t nodesum = 0;
+  for (int i=nonlayers; i<20; i++) {
+    if (i<19) {
+      printf("[%10.0f] At layer %2d: %8lu nodes.\n", t.elapsed(), i-nonlayers, nodecount[i]);
+      nodesum += nodecount[i];
+    } else {
+      printf("[%10.0f] At layer %2d: %8lu leaves.\n", t.elapsed(), i-nonlayers, nodecount[i]);
+    }
+  }
+  printf("[%10.0f] Creating octree file with %lu nodes of %luB each (%luMiB).\n", t.elapsed(), nodesum, sizeof(octree), nodesum*sizeof(octree)>>20);
+  
   printf("[%10.0f] Done.\n", t.elapsed());
 
 }
