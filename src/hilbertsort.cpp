@@ -69,7 +69,7 @@ int main(int argc, char ** argv){
   
   printf("[%10.0f] Sorting points\n", t.elapsed());
   pointset p(infile, true);
-  std::sort(p.list, p.list+p.length, hilbert3d);
+  std::stable_sort(p.list, p.list+p.length, hilbert3d);
   printf("[%10.0f] Points sorted\n", t.elapsed());
 
 }

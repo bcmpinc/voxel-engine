@@ -104,9 +104,9 @@ static octree * load_voxel(const char * filename, int depth, int rep_mask, int r
 octree * init_octree() {
     Timer t;
     octree * root =
-    //load_voxel("vxl/sign.vxl",  6,           2,2);
+    load_voxel("vxl/sign.vxl",  6,           2,2);
     //load_voxel("vxl/mulch.vxl",     OCTREE_DEPTH-6,2,4);
-    load_voxel("vxl/tinplates.vxl", OCTREE_DEPTH-6,2,4);
+    //load_voxel("vxl/tinplates.vxl", OCTREE_DEPTH-6,2,4);
     //load_voxel("vxl/wood.vxl",      OCTREE_DEPTH-5,2,4);
     //load_voxel("vxl/test.vxl",  OCTREE_DEPTH,2,6);
     //load_voxel("vxl/points.vxl",OCTREE_DEPTH,7,0,7);
