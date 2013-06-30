@@ -42,9 +42,9 @@ endef
 # Target definitions
 $(eval $(call target,voxel,main events art timing pointset octree renderer))
 $(eval $(call target,convert,convert))
-$(eval $(call target,convert2,convert2))
+$(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
-$(eval $(call target,heightmap,heightmap))
+$(eval $(call target,heightmap,heightmap pointset))
 
 # Dependencies
 ifneq "$(MAKECMDGOALS)" "clean"

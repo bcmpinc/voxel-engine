@@ -1,6 +1,9 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+
+#include "pointset.h"
+
 /*
  * Tower:
  * x: -336.619 - 398.857
@@ -9,14 +12,19 @@
  * lines: 152209633
  */
 
-void open_file(char * name) {
+int main(int argc, char ** argv) {
+  if (argc != 2) {
+    fprintf(stderr,"Please specify the file to convert (without '.xyz').\n");
+    exit(2);
+  }
   // Determine the file names.
+  char * name = argv[1];
   int length=strlen(name);
   char infile[length+11];
   char outfile[length+9];
   sprintf(infile, "input/%s.xyz", name);
   sprintf(outfile, "vxl/%s.vxl", name);
-  
+    
   // Open the files.
   FILE * res;
   res = freopen( infile,  "r", stdin );
@@ -24,20 +32,9 @@ void open_file(char * name) {
     fprintf(stderr,"Failed to open '%s' for input.\n", infile);
     exit(2);
   }
-  res = freopen( outfile, "w", stdout );
-  if (res==NULL) {
-    fprintf(stderr,"Failed to open '%s' for output.\n", outfile);
-    exit(2);
-  }
-}
+  pointfile out(outfile);
 
-int main(int argc, char ** argv) {
-  if (argc != 2) {
-    fprintf(stderr,"Please specify the file to convert (without '.txt').\n");
-    exit(2);
-  }
-  open_file(argv[1]);
-
+  // Do the conversion
   double x,y,z;
   int r,g,b;
   int minx= 1e9,miny= 1e9,minz= 1e9;
@@ -54,7 +51,7 @@ int main(int argc, char ** argv) {
     if(minx>x) minx=x; if(maxx<x) maxx=x;
     if(miny>y) miny=y; if(maxy<y) maxy=y;
     if(minz>z) minz=z; if(maxz<z) maxz=z;
-    printf("%d %d %d %6x\n", (int)(x+C), (int)(z+C), (int)(y+C), (b<<16)+(g<<8)+r);
+    out.add(point((int)(x+C), (int)(y+C), (int)(z+C), (r<<16)+(g<<8)+b));
     line++;
   }
   fprintf(stderr,"x: %d - %d\n", minx, maxx);

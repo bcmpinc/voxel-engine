@@ -15,9 +15,9 @@ int main(int argc, char ** argv) {
     fprintf(stderr,"Please specify the file to convert (without '.txt').\n");
     exit(2);
   }
-  char * name = argv[1];
 
   // Determine the file names.
+  char * name = argv[1];
   int length=strlen(name);
   char infile[length+13];
   char outfile[length+9];
@@ -39,9 +39,9 @@ int main(int argc, char ** argv) {
     fprintf(stderr,"Failed to open '%s' for input.\n", infile);
     exit(2);
   }
-  
   pointfile out(outfile);
 
+  // Do the conversion
   point p;
   int line=0;
   for(;;) {
