@@ -33,8 +33,8 @@ struct quadtree {
             x = (x | (x << quadtree_internal::S[i])) & quadtree_internal::B[i];
             y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
         }
-        map[M + x + (y<<1)] = 1;
-        face[x + (y<<1)] = 0x3f7fff;
+        map[M + (x | (y<<1))] = 1;
+        face[x | (y<<1)] = 0x3f7fff;
     }
 
     uint32_t get_face(type x, type y) {
@@ -42,7 +42,7 @@ struct quadtree {
             x = (x | (x << quadtree_internal::S[i])) & quadtree_internal::B[i];
             y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
         }
-        return face[x + (y<<1)];
+        return face[x | (y<<1)];
     }    
     
     /**
