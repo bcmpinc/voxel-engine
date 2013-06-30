@@ -26,10 +26,31 @@ uint64_t morton3d( uint64_t x, uint64_t y, uint64_t z ) {
   }
   return x | (y<<1) | (z<<2);
 }
+
+uint64_t hilbert3d( const point & p ) {
+  uint64_t val = morton3d( p.x,p.y,p.z );
+  uint64_t start = 0;
+  uint64_t end = 1; // can be 1,2,4
+  uint64_t ret = 0;
+  for (int64_t j=19; j>=0; j--) {
+    uint64_t rg = ((val>>(3*j))&7) ^ start;
+    uint64_t travel_shift = (0x30210 >> (start ^ end)*4)&3;
+    uint64_t i = (((rg << 3) | rg) >> travel_shift ) & 7;
+    i = (0x54672310 >> i*4) & 7;
+    ret = (ret<<3) | i;
+    uint64_t si = (0x64422000 >> i*4 ) & 7; // next lower even number, or 0
+    uint64_t ei = (0x77755331 >> i*4 ) & 7; // next higher odd number, or 7
+    uint64_t sg = ( si ^ (si>>1) ) << travel_shift;
+    uint64_t eg = ( ei ^ (ei>>1) ) << travel_shift;
+    end   = ( ( eg | ( eg >> 3 ) ) & 7 ) ^ start;
+    start = ( ( sg | ( sg >> 3 ) ) & 7 ) ^ start;
+  }
+  return ret;
+}
     
-bool hilbert3d( const point & p1,const point & p2 ) {
+bool hilbert3d_compare( const point & p1,const point & p2 ) {
   uint64_t val1 = morton3d( p1.x,p1.y,p1.z );
-  uint64_t val2 = morton3d( p1.x,p1.y,p1.z );
+  uint64_t val2 = morton3d( p2.x,p2.y,p2.z );
   uint64_t start = 0;
   uint64_t end = 1; // can be 1,2,4
   for (int64_t j=19; j>=0; j--) {
@@ -67,10 +88,24 @@ int main(int argc, char ** argv){
   sprintf(infile, "vxl/%s.vxl", name);
   sprintf(outfile, "vxl/%s.oct", name);
   
-  printf("[%10.0f] Sorting points\n", t.elapsed());
+  printf("[%10.0f] Opening '%s'.\n", t.elapsed(), infile);
   pointset p(infile, true);
-  std::stable_sort(p.list, p.list+p.length, hilbert3d);
-  printf("[%10.0f] Points sorted\n", t.elapsed());
+  printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), p.length);
+  int64_t old = 0;
+  for (uint64_t i=0; i<p.length; i++) {
+    if (i && (i&0x3fffff)==0) {
+      printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/p.length);
+    }
+    int64_t cur = hilbert3d(p.list[i]);
+    if (old>cur) {
+      printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
+      printf("[%10.0f] Sorting points.\n", t.elapsed());
+      std::stable_sort(p.list, p.list+p.length, hilbert3d_compare);
+      break;
+    }
+    old = cur;
+  }
+  printf("[%10.0f] Done.\n", t.elapsed());
 
 }
 
