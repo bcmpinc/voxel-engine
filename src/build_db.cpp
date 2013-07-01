@@ -171,7 +171,6 @@ int main(int argc, char ** argv){
   // Check and possibly sort the data points.
   printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), in.length);
   int64_t old = 0;
-  /*
   for (uint64_t i=0; i<in.length; i++) {
     if (i && (i&0x3fffff)==0) {
       printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
@@ -187,7 +186,6 @@ int main(int argc, char ** argv){
     }
     old = cur;
   }
-  //*/
   
   // Count nodes per layer
   // Used to determine file structure and size.
