@@ -101,6 +101,10 @@ struct quadtree {
      */
     void build(glm::dvec3 * normals) {
         build_fill(0);
+        build_fill(1);
+        build_fill(2);
+        build_fill(3);
+        return;
         map[1]=1;
         build_fill(2*4);
         map[2]=1;

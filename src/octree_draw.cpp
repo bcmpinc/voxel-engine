@@ -170,31 +170,31 @@ static void draw_cubemap() {
             if (ax>=ay && ax>=az) {
                 if (p.x>0) {
                     int fx = SIZE*(-p.z/ax/2+0.5);
-                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    int fy = SIZE*(p.y/ax/2+0.5);
                     pix(x, y, cubemap[2].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.z/ax/2+0.5);
-                    int fy = SIZE*(-p.y/ax/2+0.5);
+                    int fy = SIZE*(p.y/ax/2+0.5);
                     pix(x, y, cubemap[4].face[fx+fy*SIZE]);
                 }
             } else if (ay>=ax && ay>=az) {
                 if (p.y>0) {
                     int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(p.z/ay/2+0.5);
+                    int fy = SIZE*(-p.z/ay/2+0.5);
                     pix(x, y, cubemap[0].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(-p.z/ay/2+0.5);
+                    int fy = SIZE*(p.z/ay/2+0.5);
                     pix(x, y, cubemap[5].face[fx+fy*SIZE]);
                 }
             } else if (az>=ax && az>=ay) {
                 if (p.z>0) {
                     int fx = SIZE*(p.x/az/2+0.5);
-                    int fy = SIZE*(-p.y/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
                     pix(x, y, cubemap[1].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(-p.x/az/2+0.5);
-                    int fy = SIZE*(-p.y/az/2+0.5);
+                    int fy = SIZE*(p.y/az/2+0.5);
                     pix(x, y, cubemap[3].face[fx+fy*SIZE]);
                 }
             }
@@ -254,14 +254,14 @@ void octree_draw(uint32_t** cubepixs, octree* root) {
     FaceRenderer<5,4,2,1>::render(cubemap[3], root,-x, y, W+z);
     
     // X+ face
-    FaceRenderer<3,1,2,4>::render(cubemap[2], root,-z,-y, W-x);
+    FaceRenderer<1,1,2,4>::render(cubemap[2], root,-z, y, W-x);
     // X- face
-    FaceRenderer<6,1,2,4>::render(cubemap[4], root, z,-y, W+x);
+    FaceRenderer<4,1,2,4>::render(cubemap[4], root, z, y, W+x);
 
     // Y+ face
-    FaceRenderer<0,4,1,2>::render(cubemap[0], root, x, z, W-y);    
+    FaceRenderer<1,4,1,2>::render(cubemap[0], root, x,-z, W-y);    
     // Y- face
-    FaceRenderer<3,4,1,2>::render(cubemap[5], root, x,-z, W+y);
+    FaceRenderer<2,4,1,2>::render(cubemap[5], root, x, z, W+y);
     double d2 = t2.elapsed();
 
     Timer t3;

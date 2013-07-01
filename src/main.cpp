@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
         cubepixs[i] = new uint32_t[1<<20];
         for (int y=0; y<1024; y++) {
             for (int x=0; x<1024; x++) {
-                cubepixs[i][x+y*1024] = ((uint32_t*)cubemap[i]->pixels)[(x>>2)+(y>>2)*256];
+                cubepixs[i][x+(1023-y)*1024] = ((uint32_t*)cubemap[i]->pixels)[(x>>2)+(y>>2)*256];
             }
         }
     }
