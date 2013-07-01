@@ -181,6 +181,8 @@ int main(int argc, char ** argv){
       if (in.write) {
         printf("[%10.0f] Sorting points.\n", t.elapsed());
         in.enable_write(true);
+        // TODO: replace with IO-efficient k-way quicksort, with inline hilbert curve computation.
+        // TODO: branch into multiple threads at some point if meaningful.
         std::sort(in.list, in.list+in.length, hilbert3d_compare);
         in.enable_write(false);
       } else {
