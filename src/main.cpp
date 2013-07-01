@@ -15,16 +15,26 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr,"Please specify the file to load (without 'vxl/' & '.oct').\n");
+        exit(2);
+    }
+
+    // Determine the file names.
+    char * name = argv[1];
+    int length=strlen(name);
+    char infile[length+9];
+    sprintf(infile, "vxl/%s.oct", name);
+    octree_file in(infile);
+
     init_screen("Voxel renderer");
-    
     position = glm::dvec3(0, -1000000, 0);
-    octree * root = init_octree();
     
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            draw_octree(root);
+            octree_draw(in.root);
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

@@ -235,12 +235,8 @@ int main(int argc, char ** argv){
   
   // Prepare output file and map it to memory
   printf("[%10.0f] Creating octree file with %lu nodes of %luB each (%luMiB).\n", t.elapsed(), nodesum, sizeof(octree), filesize>>20);
-  int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, 0644);
-  if (fd == -1) {perror("Could not open/create file"); exit(1);}
-  int ret = ftruncate(fd, filesize);
-  if (ret) {perror("Could not reserve diskspace"); exit(1);}
-  octree* root = (octree*)mmap(NULL, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (root==MAP_FAILED) {perror("Could not map file to memory"); exit(1);}
+  octree_file out(outfile, filesize);
+  octree* root = out.root;
   clear(root[0]);
   
   // Determine index offsets for each layer
@@ -289,12 +285,6 @@ int main(int argc, char ** argv){
   
   // Done with conversion, clean up.
   printf("[%10.0f] Done.\n", t.elapsed());
-  if (root!=MAP_FAILED)
-    munmap(root, filesize);
-  if (fd!=-1)
-      close(fd);
-
-
 }
 
 // kate: space-indent on; indent-width 2; mixedindent off; indent-mode cstyle; 

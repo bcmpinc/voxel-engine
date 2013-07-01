@@ -8,8 +8,17 @@ struct octree {
     int32_t avgcolor[8];
 };
 
-octree * init_octree();
-void draw_octree(octree * root);
+struct octree_file {
+    const bool write;
+    uint32_t size;
+    int32_t fd;
+    octree * root;
+    octree_file(const char * filename);
+    octree_file(const char * filename, uint32_t size);
+    ~octree_file();
+};
+
+void octree_draw(octree * root);
 
 static const uint32_t OCTREE_DEPTH = 20;
 static const uint32_t SCENE_SIZE = 1 << OCTREE_DEPTH;

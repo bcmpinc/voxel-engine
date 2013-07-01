@@ -45,7 +45,7 @@ $(eval $(call target,convert,convert))
 $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
 $(eval $(call target,heightmap,heightmap pointset))
-$(eval $(call target,hilbertsort,hilbertsort pointset timing))
+$(eval $(call target,hilbertsort,hilbertsort pointset timing octree))
 
 # Dependencies
 ifneq "$(MAKECMDGOALS)" "clean"
