@@ -17,12 +17,12 @@ SDL_PixelFormat fmt = {
 
 int main() {
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/test.png"), &fmt, SDL_SWSURFACE);
-  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/test-h.png"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/tinplates.jpg"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/tinplates-h.jpg"), &fmt, SDL_SWSURFACE);
   
   assert(texture);
   assert(height);
-  pointfile out("vxl/test.vxl");
+  pointfile out("vxl/tinplates.vxl");
   
   fprintf(stderr, "texture: %4dx%4d\n", texture->w, texture->h);
   fprintf(stderr, "height:  %4dx%4d\n", height->w, height->h);
@@ -36,7 +36,7 @@ int main() {
   int * t_px = (int*)texture->pixels;
   int * h_px = (int*)height->pixels;
   
-  static const int hmf = 1;
+  static const int hmf = 4;
   
   for(int y=0;y<h;y++) {
     for(int x=0;x<w;x++) {

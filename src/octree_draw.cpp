@@ -35,7 +35,7 @@ struct SubFaceRenderer {
             int x4 = x2-x2p;
             int y3 = y1-y1p;
             int y4 = y2-y2p;
-            if (index || color>=0x1000000) {
+            if (index != ~0u) {
                 octree &s = root[index];
                 if (x3<x4 && y3<y4) {
                     if (s.avgcolor[C         ]>=0) traverse(root, f, r, s.child[C         ], s.avgcolor[C         ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
@@ -50,14 +50,14 @@ struct SubFaceRenderer {
             } else {
                 if (x3<x4 && y3<y4) {
                     // Skip nearest cube to avoid infinite recursion.
-                    traverse(root, f, r, 0, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
-                    traverse(root, f, r, 0, color, 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
-                    traverse(root, f, r, 0, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
+                    traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
+                    traverse(root, f, r, ~0u, color, 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
+                    traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
                 }
-                traverse(root, f, r, 0, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                traverse(root, f, r, 0, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                traverse(root, f, r, 0, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
-                traverse(root, f, r, 0, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
+                traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
+                traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
+                traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
+                traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
             }
         } else {
             int xm  = (x1 +x2 )/2; 
@@ -98,10 +98,10 @@ struct FaceRenderer {
     static const int ONE = SCENE_SIZE;
     
     static void render(Q& f, octree * root, int x, int y, int Q) {
-        if (f.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(root, f, 0, 0, ~0, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0);
-        if (f.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(root, f, 1, 0, ~0, x, x+Q, 0, ONE, y-Q, y,-ONE, 0);
-        if (f.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(root, f, 2, 0, ~0, x-Q, x,-ONE, 0, y, y+Q, 0, ONE);
-        if (f.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(root, f, 3, 0, ~0, x, x+Q, 0, ONE, y, y+Q, 0, ONE);
+        if (f.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(root, f, 0, 0, 0, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0);
+        if (f.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(root, f, 1, 0, 0, x, x+Q, 0, ONE, y-Q, y,-ONE, 0);
+        if (f.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(root, f, 2, 0, 0, x-Q, x,-ONE, 0, y, y+Q, 0, ONE);
+        if (f.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(root, f, 3, 0, 0, x, x+Q, 0, ONE, y, y+Q, 0, ONE);
     }
 };
 

@@ -93,7 +93,7 @@ uint32_t rgb(float r, float g, float b) {
 
 uint32_t average(octree* root, int index) {
   for (int i=0; i<8; i++) {
-    if(root[index].child[i]) {
+    if(root[index].child[i]!=~0u) {
       root[index].avgcolor[i] = average(root, root[index].child[i]);
     }
   }
@@ -115,7 +115,7 @@ void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
     if (depth<=0) return;
     for (uint32_t i=0; i<8; i++) {
         if (i == (i&mask)) {
-            if (root[index].child[i]) replicate(root, root[index].child[i], mask, depth-1);
+            if (root[index].child[i]!=~0u) replicate(root, root[index].child[i], mask, depth-1);
         } else {
             root[index].child[i] = root[index].child[i&mask];
             root[index].avgcolor[i] = root[index].avgcolor[i&mask];
@@ -126,7 +126,7 @@ void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
 void clear(octree& n) {
   for (int i=0; i<8; i++) {
     n.avgcolor[i]=-1;
-    n.child[i]=0;
+    n.child[i]=~0u;
   }
 }
 
@@ -269,7 +269,7 @@ int main(int argc, char ** argv){
       if (depth<=bottom_layer) {
         cur->avgcolor[idx] = p.c;
       } else {
-        if (cur->child[idx]==0) {
+        if (cur->child[idx]==~0u) {
           assert(nodes_created<nodesum);
           assert(offset[depth]<bounds[depth]);
           nodes_created++;
@@ -278,6 +278,8 @@ int main(int argc, char ** argv){
           clear(root[next]);
           cur->child[idx] = next;
         }
+        assert(cur->child[idx]>=0);
+        assert(cur->child[idx]<nodesum);
         cur = &root[cur->child[idx]];
       }
     }
