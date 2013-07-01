@@ -10,7 +10,9 @@
 pointset::pointset(const char* filename, bool write) : write(write) {
     if (write) {
         fd = open(filename, O_RDWR | O_CREAT, 0644);
-    } else {
+        if (fd == -1) write = false;
+    } 
+    if (!write) {
         fd = open(filename, O_RDONLY);
     }
     if (fd == -1) {perror("Could not open file"); exit(1);}

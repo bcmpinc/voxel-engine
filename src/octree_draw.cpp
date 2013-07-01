@@ -35,7 +35,7 @@ struct SubFaceRenderer {
             int x4 = x2-x2p;
             int y3 = y1-y1p;
             int y4 = y2-y2p;
-            if (index != ~0u) {
+            if (~index) {
                 octree &s = root[index];
                 if (x3<x4 && y3<y4) {
                     if (s.avgcolor[C         ]>=0) traverse(root, f, r, s.child[C         ], s.avgcolor[C         ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);

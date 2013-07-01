@@ -2,6 +2,7 @@
 #include <cassert>
 #include <algorithm>
 #include <SDL_image.h>
+#include <unistd.h>
 #include "pointset.h"
 
 SDL_PixelFormat fmt = {
@@ -15,46 +16,145 @@ SDL_PixelFormat fmt = {
   0
 };
 
-int main() {
-  IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/tinplates.jpg"), &fmt, SDL_SWSURFACE);
-  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/tinplates-h.jpg"), &fmt, SDL_SWSURFACE);
+bool checkfile(char * buffer, const char * format, const char * name) __attribute__ ((format (printf, 2, 0)));
+bool checkfile(char * buffer, const char * format, const char * name) {
+  sprintf(buffer, format, name);
+  return !access(buffer, F_OK);
+}
+
+uint32_t sample(SDL_Surface* s, int x, int y) {
+  return ((int*)s->pixels)[
+    (x+s->w)%s->w +
+    (y+s->h)%s->h * s->w
+  ];
+}
+
+int subsample(int c1, int c2, int c3, int c4, int x, int y) {
+  static const int SUB = 2;
+  static const int P = 1<<SUB;
+  return ((c1*(P-x)+c2*x)*(P-y) + (c3*(P-x)+c4*x)*y) >> SUB >> SUB;
+}
+
+uint32_t subsample_color(SDL_Surface* s, int x, int y) {
+  static const int SUB = 2;
+  static const int MASK = (1<<SUB)-1;
+  static const int M1 = 0xff0000;
+  static const int M2 = 0x00ff00;
+  static const int M3 = 0x0000ff;
   
+  int x1 = x>>SUB, x2 = x&MASK;
+  int y1 = y>>SUB, y2 = y&MASK;
+  uint32_t c1 = sample(s,x1,  y1);
+  uint32_t c2 = sample(s,x1+1,y1);
+  uint32_t c3 = sample(s,x1,  y1+1);
+  uint32_t c4 = sample(s,x1+1,y1+1);
+  
+  uint32_t r =
+    (subsample(c1&M1,c2&M1,c3&M1,c4&M1,x2,y2)&M1) |
+    (subsample(c1&M2,c2&M2,c3&M2,c4&M2,x2,y2)&M2) |
+    (subsample(c1&M3,c2&M3,c3&M3,c4&M3,x2,y2)&M3);
+  assert(x2 || y2 || r==(c1&0xffffff));
+  return r;
+}
+
+uint32_t subsample_height(SDL_Surface* s, int x, int y) {
+  static const int SUB = 2;
+  static const int P = 1<<SUB;
+  static const int MASK = P-1;
+  static const int M = 0xff;
+  
+  int x1 = x>>SUB, x2 = x&MASK;
+  int y1 = y>>SUB, y2 = y&MASK;
+  uint32_t c1 = sample(s,x1,  y1)&M;
+  uint32_t c2 = sample(s,x1+1,y1)&M;
+  uint32_t c3 = sample(s,x1,  y1+1)&M;
+  uint32_t c4 = sample(s,x1+1,y1+1)&M;
+  
+  uint32_t r = (c1*(P-x2)+c2*x2)*(P-y2) + (c3*(P-x2)+c4*x2)*y2;
+  assert(x2 || y2 || (r>>4==c1));
+  return r;
+}
+
+int main(int argc, const char ** argv) {
+  if (argc != 3) {
+    fprintf(stderr,"Please specify the file to convert (without 'input/', '-h', '.png' or '.jpg'), followed by the height reduction power.\n");
+    exit(2);
+  }
+
+  // Determine height reduction power.
+  char * endptr = NULL;
+  const int hrp = strtol(argv[2], &endptr, 10);
+  if (errno) {perror("Could not parse height reduction power"); exit(1);}
+  assert(endptr);
+  assert(endptr[0]==0);
+  assert(hrp>=0 && hrp<12);
+
+  // Determine the file names.
+  const char * name = argv[1];
+  int length=strlen(name);
+  char infile[length+12];
+  char infileh[length+14];
+  char outfile[length+9];
+  
+  if (not(
+    checkfile(infile, "input/%s.png", name) ||
+    checkfile(infile, "input/%s.jpg", name) ||
+    checkfile(infile, "input/%s.jpeg", name)
+  )) {
+    fprintf(stderr,"Failed to open texture.\n");
+    exit(1);
+  }
+  if (not(
+    checkfile(infileh, "input/%s-h.png", name) ||
+    checkfile(infileh, "input/%s-h.jpg", name) ||
+    checkfile(infileh, "input/%s-h.jpeg", name)
+  )) {
+    fprintf(stderr,"Failed to open heightmap.\n");
+    exit(1);
+  }
+  sprintf(outfile, "vxl/%s.vxl", name);
+  
+  // Loading images
+  IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
+  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load(infile), &fmt, SDL_SWSURFACE);
+  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load(infileh), &fmt, SDL_SWSURFACE);
   assert(texture);
   assert(height);
-  pointfile out("vxl/tinplates.vxl");
+
+  fprintf(stderr, "texture: %4dx%4d  %s\n", texture->w, texture->h, infile);
+  fprintf(stderr, "height:  %4dx%4d  %s\n", height->w, height->h, infileh);  
   
-  fprintf(stderr, "texture: %4dx%4d\n", texture->w, texture->h);
-  fprintf(stderr, "height:  %4dx%4d\n", height->w, height->h);
-  
+  // Preparing
   assert(texture->w==height->w);
   assert(texture->h==height->h);
-  
   int w=texture->w;
   int h=texture->h;
   
-  int * t_px = (int*)texture->pixels;
-  int * h_px = (int*)height->pixels;
-  
-  static const int hmf = 4;
-  
-  for(int y=0;y<h;y++) {
-    for(int x=0;x<w;x++) {
-      int c[4]; 
-      int z[4]; 
-      for (int j=0; j<4; j++) {
-        int i = (x+(j&1))%w+((y+j/2)%h)*w;
-        c[j] = t_px[i] & 0xfcfcfc;
-        z[j] = h_px[i] & 0xff;
-      }
-      for (int j=0; j<4; j++) {
-          out.add(point(x*2,  ((z[0]               )<<2>>0>>hmf)+j, y*2,   (c[0]               )>>0));
-          out.add(point(x*2+1,((z[0]+z[1]          )<<2>>1>>hmf)+j, y*2,   (c[0]+c[1]          )>>1));
-          out.add(point(x*2,  ((z[0]+z[2]          )<<2>>1>>hmf)+j, y*2+1, (c[0]+c[2]          )>>1));
-          out.add(point(x*2+1,((z[0]+z[1]+z[2]+z[3])<<2>>2>>hmf)+j, y*2+1, (c[0]+c[1]+c[2]+c[3])>>2));
+  // Write output
+  pointfile out(outfile);
+  int points = 0;
+  int maxh = 0;
+  const int ds = 2;
+  for(int y=0;y<h*4;y+=ds) {
+    for(int x=0;x<w*4;x+=ds) {
+      int c = subsample_color(texture, x, y);
+      int z = subsample_height(height, x, y)>>hrp;
+      out.add(point(x/ds,z,y/ds,c));
+      maxh = std::max(maxh, z);
+      points++;
+      int n = std::min(std::min(std::min((
+          subsample_height(height, x-ds, y)>>hrp),
+          subsample_height(height, x+ds, y)>>hrp),
+          subsample_height(height, x, y-ds)>>hrp),
+          subsample_height(height, x, y+ds)>>hrp);
+      for (int i=n+1; i<z; i++) {
+        out.add(point(x/ds,i,y/ds,c));
+        points++;
       }
     }
   }
+  fprintf(stderr, "wrote: %dMi points\n", points>>20);
+  fprintf(stderr, "maximum height: %d\n", maxh);
 }
  
 // kate: space-indent on; indent-width 2; mixedindent off; indent-mode cstyle; 

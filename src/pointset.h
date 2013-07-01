@@ -15,7 +15,7 @@ struct point {
  * Points cannot be added or removed.
  */
 struct pointset {
-    const bool write;
+    bool write;
     uint32_t size;
     uint32_t length;
     int32_t fd;

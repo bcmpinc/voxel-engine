@@ -93,7 +93,7 @@ uint32_t rgb(float r, float g, float b) {
 
 uint32_t average(octree* root, int index) {
   for (int i=0; i<8; i++) {
-    if(root[index].child[i]!=~0u) {
+    if(~root[index].child[i]) {
       root[index].avgcolor[i] = average(root, root[index].child[i]);
     }
   }
@@ -115,7 +115,7 @@ void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
     if (depth<=0) return;
     for (uint32_t i=0; i<8; i++) {
         if (i == (i&mask)) {
-            if (root[index].child[i]!=~0u) replicate(root, root[index].child[i], mask, depth-1);
+            if (~root[index].child[i]) replicate(root, root[index].child[i], mask, depth-1);
         } else {
             root[index].child[i] = root[index].child[i&mask];
             root[index].avgcolor[i] = root[index].avgcolor[i&mask];
@@ -151,7 +151,7 @@ int main(int argc, char ** argv){
     if (errno) {perror("Could not parse depth"); exit(1);}
     assert(endptr);
     assert(endptr[0]==0);
-    assert(repeat_depth>=1 && repeat_depth<16);
+    assert(repeat_depth>=0 && repeat_depth<16);
     int dirs = (0x01121223>>repeat_mask*4) & 3;
     printf("[%10.0f] Result cloned %d times at %d layers in %s%s%s direction(s).\n", t.elapsed(), 1<<dirs*repeat_depth, repeat_depth, repeat_mask&4?"":"X", repeat_mask&2?"":"Y", repeat_mask&1?"":"Z");
   }
@@ -178,10 +178,15 @@ int main(int argc, char ** argv){
     int64_t cur = hilbert3d(in.list[i]);
     if (old>cur) {
       printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
-      printf("[%10.0f] Sorting points.\n", t.elapsed());
-      in.enable_write(true);
-      std::sort(in.list, in.list+in.length, hilbert3d_compare);
-      in.enable_write(false);
+      if (in.write) {
+        printf("[%10.0f] Sorting points.\n", t.elapsed());
+        in.enable_write(true);
+        std::sort(in.list, in.list+in.length, hilbert3d_compare);
+        in.enable_write(false);
+      } else {
+        printf("[%10.0f] Cannot proceed as '%s' is read only.\n", t.elapsed(), infile);
+        exit(1);
+      }
       break;
     }
     old = cur;
@@ -269,7 +274,7 @@ int main(int argc, char ** argv){
       if (depth<=bottom_layer) {
         cur->avgcolor[idx] = p.c;
       } else {
-        if (cur->child[idx]==~0u) {
+        if (~cur->child[idx]==0u) {
           assert(nodes_created<nodesum);
           assert(offset[depth]<bounds[depth]);
           nodes_created++;
