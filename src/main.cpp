@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
         Timer t;
         if (moves) {
             octree_draw(in.root);
+            draw_box();
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

@@ -2,6 +2,7 @@
 #define VOXEL_QUADTREE_H
 #include <cstdint>
 #include <cstring>
+#include <glm/glm.hpp>
 
 namespace quadtree_internal {
     typedef uint_fast32_t type;
@@ -62,14 +63,11 @@ struct quadtree {
     /**
      * Ensures that a node is non-zero if one of its children is nonzero.
      */
-    void build(type i) {
-        if (i<L) {
-            build(4*i+4);
-            build(4*i+5);
-            build(4*i+6);
-            build(4*i+7);
-        }
-        map[i] = ((int32_t*)map)[i+1]!=0;
+    void build(glm::dvec3 * normals) {
+        glm::dvec3 z(0,0,1);
+        for (int i=0; i<4; i++) 
+            if (glm::dot(z, normals[i])<0) return;
+        memset(map,1,sizeof(map));
     }
 };
 

@@ -7,6 +7,18 @@
 #include "timing.h"
 #include "octree.h"
 
+namespace frustum {
+    // Compute frustum parameters.
+    static const int left   = -SCREEN_WIDTH;
+    static const int right  =  SCREEN_WIDTH;
+    static const int top    =  SCREEN_HEIGHT;
+    static const int bottom = -SCREEN_HEIGHT;
+    //static const int near   =  SCREEN_HEIGHT; // I.e. 90 degree FOV.
+    static const int near   =  SCREEN_HEIGHT*2;
+    static const int cubepos=  SCREEN_WIDTH * 2; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
+    static const int far    =  SCREEN_WIDTH * 4; // > sqrt(3)*cubepos 
+}
+
 using std::max;
 using std::min;
 
@@ -111,58 +123,33 @@ struct FaceRenderer {
 };
 
 static void prepare_cubemap() {
-    const int SIZE = Q::SIZE;
     // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
-    double fov = 1.0/SCREEN_HEIGHT;
-    // Fill the leaf-layer of the quadtrees with wether they have a pixel location on screen.
-    for (int y=0; y<SCREEN_HEIGHT; y++) {
-        for (int x=0; x<SCREEN_WIDTH; x++) {
-            glm::dvec3 p( (x-SCREEN_WIDTH/2)*fov, (SCREEN_HEIGHT/2-y)*fov, 1 );
-            p = inverse_orientation * p;
-            double ax=fabs(p.x);
-            double ay=fabs(p.y);
-            double az=fabs(p.z);
-        
-            if (ax>=ay && ax>=az) {
-                if (p.x>0) {
-                    int fx = SIZE*(-p.z/ax/2+0.5);
-                    int fy = SIZE*(-p.y/ax/2+0.5);
-                    cubemap[2].set(fx,fy);
-                } else {
-                    int fx = SIZE*(p.z/ax/2+0.5);
-                    int fy = SIZE*(-p.y/ax/2+0.5);
-                    cubemap[4].set(fx,fy);
-                }
-            } else if (ay>=ax && ay>=az) {
-                if (p.y>0) {
-                    int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(p.z/ay/2+0.5);
-                    cubemap[0].set(fx,fy);
-                } else {
-                    int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(-p.z/ay/2+0.5);
-                    cubemap[5].set(fx,fy);
-                }
-            } else if (az>=ax && az>=ay) {
-                if (p.z>0) {
-                    int fx = SIZE*(p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    cubemap[1].set(fx,fy);
-                } else {
-                    int fx = SIZE*(-p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    cubemap[3].set(fx,fy);
-                }
-            }
-        }
-    }
+    // Compute normals of the 4 planes of the view piramid.
+    glm::dvec3 normals[4] = {
+        inverse_orientation*glm::normalize(glm::dvec3( frustum::near, 0, -frustum::left  )),
+        inverse_orientation*glm::normalize(glm::dvec3(-frustum::near, 0,  frustum::right )),
+        inverse_orientation*glm::normalize(glm::dvec3(0,  frustum::near, -frustum::bottom)),
+        inverse_orientation*glm::normalize(glm::dvec3(0, -frustum::near,  frustum::top   )),
+    };
+    
     // build the non-leaf layers of the quadtree
     for (int i=0; i<6; i++) {
-        cubemap[i].build(0); 
-        cubemap[i].build(1); 
-        cubemap[i].build(2); 
-        cubemap[i].build(3); 
+        glm::dvec3 face_normals[4];
+        for (int j=0; j<4; j++) {
+            glm::dvec3 v = normals[j];
+            switch (i) {
+                case 0: face_normals[j] = glm::dvec3(v.x,-v.z,v.y); break;
+                case 1: face_normals[j] = v; break;
+                case 2: face_normals[j] = glm::dvec3(-v.z,v.y,v.x); break;
+                case 3: face_normals[j] = glm::dvec3(-v.x,v.y,-v.z); break;
+                case 4: face_normals[j] = glm::dvec3(v.z,v.y,-v.x); break;
+                case 5: face_normals[j] = glm::dvec3(v.x,v.z,-v.y); break;
+            }
+        }
+        cubemap[i].build(face_normals);
+        
+        memset(cubemap[i].face,0xcc,sizeof(cubemap[i].face));
     }
 }
 
