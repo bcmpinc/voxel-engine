@@ -127,10 +127,10 @@ static void prepare_cubemap() {
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
     // Compute normals of the 4 planes of the view piramid.
     glm::dvec3 normals[4] = {
-        inverse_orientation*glm::normalize(glm::dvec3( frustum::near, 0, -frustum::left  )),
-        inverse_orientation*glm::normalize(glm::dvec3(-frustum::near, 0,  frustum::right )),
-        inverse_orientation*glm::normalize(glm::dvec3(0,  frustum::near, -frustum::bottom)),
-        inverse_orientation*glm::normalize(glm::dvec3(0, -frustum::near,  frustum::top   )),
+        inverse_orientation*glm::dvec3( frustum::near, 0, -frustum::left  ),
+        inverse_orientation*glm::dvec3(-frustum::near, 0,  frustum::right ),
+        inverse_orientation*glm::dvec3(0,  frustum::near, -frustum::bottom),
+        inverse_orientation*glm::dvec3(0, -frustum::near,  frustum::top   ),
     };
     
     // build the non-leaf layers of the quadtree
@@ -147,10 +147,10 @@ static void prepare_cubemap() {
                 case 5: face_normals[j] = glm::dvec3(v.x,v.z,-v.y); break;
             }
         }
+        printf(" [%d]",i);
         cubemap[i].build(face_normals);
-        
-        memset(cubemap[i].face,0xcc,sizeof(cubemap[i].face));
     }
+    printf("\n");
 }
 
 static void draw_cubemap() {
@@ -203,13 +203,17 @@ static void draw_cubemap() {
 }
 
 /** Draw anything on the screen. */
-void octree_draw(octree * root) {
+void octree_draw(uint32_t** cubepixs, octree* root) {
     int x = position.x;
     int y = position.y;
     int z = position.z;
     int W = SCENE_SIZE;
 
     Timer t1;
+    for(int i=0; i<6; i++) {
+        memcpy(cubemap[i].face,cubepixs[i],sizeof(cubemap[i].face));
+    }
+    
     prepare_cubemap();
     double d1 = t1.elapsed();
     

@@ -5,19 +5,19 @@
 #include <glm/glm.hpp>
 
 namespace quadtree_internal {
-    typedef uint_fast32_t type;
+    typedef int_fast32_t type;
     static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
     static constexpr type S[] = {8, 4, 2, 1};
 }
 
 template <unsigned int dim>
 struct quadtree {
-    typedef uint_fast32_t type;
+    typedef int_fast32_t type;
     
     static const type N = (4<<dim<<dim)/3-1;
     static const type M = N/4-1;
     static const type L = M/4-1;
-    static const type SIZE = 1<<dim;
+    static const int SIZE = 1<<dim;
     
     /** 
      * The quadtree is stored in a heap-like fashion as a single array.
@@ -60,14 +60,56 @@ struct quadtree {
         if (((int32_t*)map)[i+1]==0) map[i] = 0;
     }
     
+    void build_fill(type i) {
+        int n=1;
+        while (i<N) {
+            for (int j=0; j<n; j++) {
+                map[i+j]=1;
+            }
+            i++;
+            i<<=2;
+            n<<=2;
+        }
+        
+    }
+    
+    void build_check(glm::dvec3 * normals, type i, int x1, int x2, int y1, int y2) {
+        for (int i=0; i<4; i++) {
+            if (
+                glm::dot(glm::dvec3(x1,y1,SIZE), normals[i])<0 &&
+                glm::dot(glm::dvec3(x2,y1,SIZE), normals[i])<0 &&
+                glm::dot(glm::dvec3(x1,y2,SIZE), normals[i])<0 &&
+                glm::dot(glm::dvec3(x2,y2,SIZE), normals[i])<0
+            ) {
+                map[i]=0;
+                return;
+            }
+        }
+        printf("%ld",i);
+        build_fill(i);
+    }
+    
     /**
      * Ensures that a node is non-zero if one of its children is nonzero.
      */
     void build(glm::dvec3 * normals) {
-        glm::dvec3 z(0,0,1);
-        for (int i=0; i<4; i++) 
-            if (glm::dot(z, normals[i])<0) return;
-        memset(map,1,sizeof(map));
+        build_fill(0);
+        map[1]=1;
+        build_fill(2*4);
+        map[2]=1;
+        map[3*4]=1;
+        build_fill((3*4+1)*4);
+        map[3]=1;
+        map[4*4]=1;
+        map[(4*4+1)*4]=1;
+        build_fill(((4*4+1)*4+1)*4);
+        
+        /*
+        build_check(normals,1,-SIZE,0,-SIZE,0);        
+        build_check(normals,0, 0,SIZE,-SIZE,0);
+        build_check(normals,0,-SIZE,0, 0,SIZE);
+        build_check(normals,2, 0,SIZE, 0,SIZE);
+        */
     }
 };
 

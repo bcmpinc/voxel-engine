@@ -18,7 +18,7 @@ struct octree_file {
     ~octree_file();
 };
 
-void octree_draw(octree * root);
+void octree_draw(uint32_t ** cubemap, octree * root);
 
 static const uint32_t OCTREE_DEPTH = 20;
 static const uint32_t SCENE_SIZE = 1 << OCTREE_DEPTH;

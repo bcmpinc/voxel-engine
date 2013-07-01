@@ -13,6 +13,28 @@
 
 using namespace std;
 
+SDL_PixelFormat fmt = {
+  NULL,
+  32,
+  4,
+  0,0,0,0,
+  16,8,0,24,
+  0xff0000, 0xff00, 0xff, 0xff000000,
+  0,
+  0
+};
+
+void load_cubemap(SDL_Surface ** cubemap) {
+    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
+    cubemap[0] = SDL_ConvertSurface(IMG_Load("img/cubemap0.png"), &fmt, SDL_SWSURFACE);
+    cubemap[1] = SDL_ConvertSurface(IMG_Load("img/cubemap1.png"), &fmt, SDL_SWSURFACE);
+    cubemap[2] = SDL_ConvertSurface(IMG_Load("img/cubemap2.png"), &fmt, SDL_SWSURFACE);
+    cubemap[3] = SDL_ConvertSurface(IMG_Load("img/cubemap3.png"), &fmt, SDL_SWSURFACE);
+    cubemap[4] = SDL_ConvertSurface(IMG_Load("img/cubemap4.png"), &fmt, SDL_SWSURFACE);
+    cubemap[5] = SDL_ConvertSurface(IMG_Load("img/cubemap5.png"), &fmt, SDL_SWSURFACE);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -30,11 +52,23 @@ int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     position = glm::dvec3(0, -1000000, 0);
     
+    SDL_Surface * cubemap[6];
+    load_cubemap(cubemap);
+    uint32_t * cubepixs[6];
+    for (int i=0; i<6; i++) {
+        cubepixs[i] = new uint32_t[1<<20];
+        for (int y=0; y<1024; y++) {
+            for (int x=0; x<1024; x++) {
+                cubepixs[i][x+y*1024] = ((uint32_t*)cubemap[i]->pixels)[(x>>2)+(y>>2)*256];
+            }
+        }
+    }
+    
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            octree_draw(in.root);
+            octree_draw(cubepixs, in.root);
             draw_box();
             flip_screen();
             
