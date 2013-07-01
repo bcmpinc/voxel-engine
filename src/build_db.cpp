@@ -180,7 +180,7 @@ int main(int argc, char ** argv){
       printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
       printf("[%10.0f] Sorting points.\n", t.elapsed());
       in.enable_write(true);
-      std::stable_sort(in.list, in.list+in.length, hilbert3d_compare);
+      std::sort(in.list, in.list+in.length, hilbert3d_compare);
       in.enable_write(false);
       break;
     }
