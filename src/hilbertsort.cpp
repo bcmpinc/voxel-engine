@@ -160,30 +160,27 @@ int main(int argc, char ** argv){
   sprintf(outfile, "vxl/%s.oct", name);
   
   // Map input file to memory
-  {
-    printf("[%10.0f] Opening '%s' read/write.\n", t.elapsed(), infile);
-    pointset in(infile, true);
-    
-    // Check and possibly sort the data points.
-    printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), in.length);
-    int64_t old = 0;
-    for (uint64_t i=0; i<in.length; i++) {
-      if (i && (i&0x3fffff)==0) {
-        printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
-      }
-      int64_t cur = hilbert3d(in.list[i]);
-      if (old>cur) {
-        printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
-        printf("[%10.0f] Sorting points.\n", t.elapsed());
-        std::stable_sort(in.list, in.list+in.length, hilbert3d_compare);
-        break;
-      }
-      old = cur;
-    }
-  }
+  printf("[%10.0f] Opening '%s' read/write.\n", t.elapsed(), infile);
+  pointset in(infile, true);
 
-  printf("[%10.0f] Opening '%s' read only.\n", t.elapsed(), infile);
-  pointset in(infile, false);
+  // Check and possibly sort the data points.
+  printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), in.length);
+  int64_t old = 0;
+  for (uint64_t i=0; i<in.length; i++) {
+    if (i && (i&0x3fffff)==0) {
+      printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
+    }
+    int64_t cur = hilbert3d(in.list[i]);
+    if (old>cur) {
+      printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
+      printf("[%10.0f] Sorting points.\n", t.elapsed());
+      in.enable_write(true);
+      std::stable_sort(in.list, in.list+in.length, hilbert3d_compare);
+      in.enable_write(false);
+      break;
+    }
+    old = cur;
+  }
   
   // Count nodes per layer
   // Used to determine file structure and size.
@@ -192,7 +189,7 @@ int main(int argc, char ** argv){
   uint64_t nodecount[20];
   int64_t maxnode=0;
   for (int j=0; j<20; j++) nodecount[j]=0;
-  int64_t old = -1;
+  old = -1;
   for (uint64_t i=0; i<in.length; i++) {
     if (i && (i&0x3fffff)==0) {
       printf("[%10.0f] Counting ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
@@ -254,20 +251,21 @@ int main(int argc, char ** argv){
   for (i=0; i<in.length; i++) {
     if (i && (i&0x3fffff)==0) printf("[%10.0f] Stored %6.2f%% points (%luMiB).\n", t.elapsed(), i*100.0/in.length, nodes_created*sizeof(octree)>>20);
     point p(in.list[i]);
-    uint32_t val = morton3d(p.x, p.y, p.z);
+    uint64_t val = morton3d(p.x, p.y, p.z);
     octree * cur = &root[0];
+    //fprintf(stderr,"val=%15lx, p{x=%d,y=%d,x=%d,c=%6x.\n", val, p.x, p.y, p.z, p.c);
     for (int depth = layers-1; depth >= 0; depth--) {
       int idx = (val >> depth*3)&7;
-      //printf("i=%u, depth=%d, idx=%d, offset[depth]=%u, cur=%ld.\n", i, depth, idx, offset[depth], cur-root);
+      //fprintf(stderr,"i=%u, depth=%d, idx=%d, offset[depth]=%u, cur=%ld.\n", i, depth, idx, offset[depth], cur-root);
       if (depth==0) {
         cur->avgcolor[idx] = p.c;
       } else {
         if (cur->child[idx]==0) {
           assert(nodes_created<nodesum);
+          assert(offset[depth]<bounds[depth]);
           nodes_created++;
           uint32_t next = offset[depth]++;
-          //printf("Created node %d (%d)\n", next, nodes_created);
-          assert(next<bounds[depth]);
+          //fprintf(stderr,"Created node %d (%d)\n", next, nodes_created);
           clear(root[next]);
           cur->child[idx] = next;
         }

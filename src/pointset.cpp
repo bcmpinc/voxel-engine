@@ -17,7 +17,7 @@ pointset::pointset(const char* filename, bool write) : write(write) {
     size = lseek(fd, 0, SEEK_END);
     assert(size % sizeof(point) == 0);
     length = size / sizeof(point);
-    list = (point*)mmap(NULL, size, PROT_READ | (write?PROT_WRITE:0), MAP_SHARED, fd, 0);
+    list = (point*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
     if (list == MAP_FAILED) {perror("Could not map file to memory"); exit(1);} 
 }
 
@@ -26,6 +26,21 @@ pointset::~pointset() {
         munmap(list, size);
     if (fd!=-1)
         close(fd);
+}
+
+/**
+ * Enables write access for the mapped memory region. 
+ * This is used to avoid file corruption due to invalid memory access.
+ * Note that writing to the memory while it does not has read permission 
+ * will cause a segfault.
+ */
+void pointset::enable_write(bool flag) {
+    if (write) {
+        int ret = mprotect(list, size, PROT_READ | (write?PROT_WRITE:0));
+        if (ret) {perror("Could not change read/write memory protection"); exit(1);}
+    } else{
+        fprintf(stderr, "Not opened in write mode");
+    }
 }
 
 static const int point_buffer_size = 1<<16;

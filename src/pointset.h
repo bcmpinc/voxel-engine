@@ -11,6 +11,7 @@ struct point {
 /**
  * Opens a pointset file for reading.
  * Can also be opened in write mode for transforming or sorting the points.
+ * Write access must be enabled before the data can be modified.
  * Points cannot be added or removed.
  */
 struct pointset {
@@ -21,6 +22,7 @@ struct pointset {
     point * list;
     pointset(const char* filename, bool write);
     ~pointset();
+    void enable_write(bool flag);
 };
 
 /**
