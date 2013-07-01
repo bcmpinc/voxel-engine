@@ -49,11 +49,5 @@ void pix(uint32_t x, uint32_t y, uint32_t c) {
         pixs[i] = c;
     }
 }
-#define CLAMP(x,l,u) (x<l?l:x>u?u:x)
-uint32_t rgb(uint32_t r, uint32_t g, uint32_t b) {
-    return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
-}
-uint32_t rgb(float r, float g, float b) {
-    return rgb((uint32_t)(r+0.5),(uint32_t)(g+0.5),(uint32_t)(b+0.5));
-}
+
 

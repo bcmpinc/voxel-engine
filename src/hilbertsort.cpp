@@ -4,6 +4,9 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include "pointset.h"
 #include "timing.h"
@@ -75,6 +78,53 @@ bool hilbert3d_compare( const point & p1,const point & p2 ) {
   return false;
 }
 
+#define CLAMP(x,l,u) (x<l?l:x>u?u:x)
+uint32_t rgb(uint32_t r, uint32_t g, uint32_t b) {
+  return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
+}
+uint32_t rgb(float r, float g, float b) {
+  return rgb((uint32_t)(r+0.5),(uint32_t)(g+0.5),(uint32_t)(b+0.5));
+}
+
+uint32_t average(octree* root, int index) {
+  for (int i=0; i<8; i++) {
+    if(root[index].child[i]) {
+      root[index].avgcolor[i] = average(root, root[index].child[i]);
+    }
+  }
+  float r=0, g=0, b=0;
+  int n=0;
+  for (int i=0; i<8; i++) {
+    if(root[index].avgcolor[i]>=0) {
+      int v = root[index].avgcolor[i];
+      r += (v&0xff0000)>>16;
+      g += (v&0xff00)>>8;
+      b += (v&0xff);
+      n++;
+    }
+  }
+  return rgb(r/n,g/n,b/n);
+}
+
+void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
+    if (depth<=0) return;
+    for (uint32_t i=0; i<8; i++) {
+        if (i == (i&mask)) {
+            if (root[index].child[i]) replicate(root, root[index].child[i], mask, depth-1);
+        } else {
+            root[index].child[i] = root[index].child[i&mask];
+            root[index].avgcolor[i] = root[index].avgcolor[i&mask];
+        }
+    }
+}
+
+void clear(octree& n) {
+  for (int i=0; i<8; i++) {
+    n.avgcolor[i]=-1;
+    n.child[i]=0;
+  }
+}
+
 int main(int argc, char ** argv){
   Timer t;
   if (argc != 2 && argc != 4) {
@@ -109,39 +159,50 @@ int main(int argc, char ** argv){
   sprintf(infile, "vxl/%s.vxl", name);
   sprintf(outfile, "vxl/%s.oct", name);
   
-  printf("[%10.0f] Opening '%s'.\n", t.elapsed(), infile);
-  pointset p(infile, true);
-  
-  printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), p.length);
-  int64_t old = 0;
-  for (uint64_t i=0; i<p.length; i++) {
-    if (i && (i&0x3fffff)==0) {
-      printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/p.length);
+  // Map input file to memory
+  {
+    printf("[%10.0f] Opening '%s' read/write.\n", t.elapsed(), infile);
+    pointset in(infile, true);
+    
+    // Check and possibly sort the data points.
+    printf("[%10.0f] Checking if %d points are sorted.\n", t.elapsed(), in.length);
+    int64_t old = 0;
+    for (uint64_t i=0; i<in.length; i++) {
+      if (i && (i&0x3fffff)==0) {
+        printf("[%10.0f] Checking ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
+      }
+      int64_t cur = hilbert3d(in.list[i]);
+      if (old>cur) {
+        printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
+        printf("[%10.0f] Sorting points.\n", t.elapsed());
+        std::stable_sort(in.list, in.list+in.length, hilbert3d_compare);
+        break;
+      }
+      old = cur;
     }
-    int64_t cur = hilbert3d(p.list[i]);
-    if (old>cur) {
-      printf("[%10.0f] Point %lu should precede previous point.\n", t.elapsed(), i);
-      printf("[%10.0f] Sorting points.\n", t.elapsed());
-      std::stable_sort(p.list, p.list+p.length, hilbert3d_compare);
-      break;
-    }
-    old = cur;
   }
+
+  printf("[%10.0f] Opening '%s' read only.\n", t.elapsed(), infile);
+  pointset in(infile, false);
   
+  // Count nodes per layer
+  // Used to determine file structure and size.
+  // Layers are counted as well.
   printf("[%10.0f] Counting nodes per layer.\n", t.elapsed());
   uint64_t nodecount[20];
   int64_t maxnode=0;
   for (int j=0; j<20; j++) nodecount[j]=0;
-  old = -1;
-  for (uint64_t i=0; i<p.length; i++) {
+  int64_t old = -1;
+  for (uint64_t i=0; i<in.length; i++) {
     if (i && (i&0x3fffff)==0) {
-      printf("[%10.0f] Counting ... %6.2f%%.\n", t.elapsed(), i*100.0/p.length);
+      printf("[%10.0f] Counting ... %6.2f%%.\n", t.elapsed(), i*100.0/in.length);
     }
-    point q = p.list[i];
+    point q = in.list[i];
+    assert(q.c<0x1000000);    
     int64_t cur = morton3d(q.x, q.y, q.z);
     for (int j=0; j<20; j++) {
       if ((cur>>j*3)!=(old>>j*3)) {
-        nodecount[19-j]++;
+        nodecount[j]++;
       }
     }
     old = cur;
@@ -152,21 +213,81 @@ int main(int argc, char ** argv){
   int layers=0;
   while(maxnode>>layers*3) layers++;
   printf("[%10.0f] Found 1 leaf layer + %d data layers + %d repetition layers.\n", t.elapsed(), layers, repeat_depth);
-  int nonlayers=19-layers-repeat_depth;
-  assert(nonlayers>=0);
+  assert(nodecount[layers]==1);
+  layers+=repeat_depth;
   
+  // Report on node counts per layer and determine file size.
   uint64_t nodesum = 0;
-  for (int i=nonlayers; i<20; i++) {
-    if (i<19) {
-      printf("[%10.0f] At layer %2d: %8lu nodes.\n", t.elapsed(), i-nonlayers, nodecount[i]);
+  for (int i=0; i<=layers; i++) {
+    if (i) {
+      printf("[%10.0f] At layer %2d: %8lu nodes.\n", t.elapsed(), i, nodecount[i]);
       nodesum += nodecount[i];
     } else {
-      printf("[%10.0f] At layer %2d: %8lu leaves.\n", t.elapsed(), i-nonlayers, nodecount[i]);
+      printf("[%10.0f] At layer %2d: %8lu leaves.\n", t.elapsed(), i, nodecount[i]);
     }
   }
-  printf("[%10.0f] Creating octree file with %lu nodes of %luB each (%luMiB).\n", t.elapsed(), nodesum, sizeof(octree), nodesum*sizeof(octree)>>20);
+  uint64_t filesize = nodesum*sizeof(octree);
   
+  // Prepare output file and map it to memory
+  printf("[%10.0f] Creating octree file with %lu nodes of %luB each (%luMiB).\n", t.elapsed(), nodesum, sizeof(octree), filesize>>20);
+  int fd = open(outfile, O_RDWR | O_CREAT | O_TRUNC, 0644);
+  if (fd == -1) {perror("Could not open/create file"); exit(1);}
+  int ret = ftruncate(fd, filesize);
+  if (ret) {perror("Could not reserve diskspace"); exit(1);}
+  octree* root = (octree*)mmap(NULL, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (root==MAP_FAILED) {perror("Could not map file to memory"); exit(1);}
+  clear(root[0]);
+  
+  // Determine index offsets for each layer
+  uint32_t offset[20], bounds[20];
+  for (int j=0; j<20; j++) {offset[j]=0; bounds[j]=0;}
+  offset[layers] = 0;
+  for (int i=layers-1; i>=0; i--) {
+    offset[i] = offset[i+1] + nodecount[i+1]; 
+    bounds[i] = offset[i] + nodecount[i];
+  }
+  
+  // Read voxels and store them.
+  printf("[%10.0f] Storing points.\n", t.elapsed());
+  uint32_t i;
+  uint32_t nodes_created = 0;
+  for (i=0; i<in.length; i++) {
+    if (i && (i&0x3fffff)==0) printf("[%10.0f] Stored %6.2f%% points (%luMiB).\n", t.elapsed(), i*100.0/in.length, nodes_created*sizeof(octree)>>20);
+    point p(in.list[i]);
+    uint32_t val = morton3d(p.x, p.y, p.z);
+    octree * cur = &root[0];
+    for (int depth = layers-1; depth >= 0; depth--) {
+      int idx = (val >> depth*3)&7;
+      //printf("i=%u, depth=%d, idx=%d, offset[depth]=%u, cur=%ld.\n", i, depth, idx, offset[depth], cur-root);
+      if (depth==0) {
+        cur->avgcolor[idx] = p.c;
+      } else {
+        if (cur->child[idx]==0) {
+          assert(nodes_created<nodesum);
+          nodes_created++;
+          uint32_t next = offset[depth]++;
+          //printf("Created node %d (%d)\n", next, nodes_created);
+          assert(next<bounds[depth]);
+          clear(root[next]);
+          cur->child[idx] = next;
+        }
+        cur = &root[cur->child[idx]];
+      }
+    }
+  }
+  printf("[%10.0f] Computing average colors.\n", t.elapsed());
+  average(root, 0);
+  
+  printf("[%10.0f] Replicating model.\n", t.elapsed());
+  replicate(root, 0, repeat_mask, repeat_depth);
+  
+  // Done with conversion, clean up.
   printf("[%10.0f] Done.\n", t.elapsed());
+  if (root!=MAP_FAILED)
+    munmap(root, filesize);
+  if (fd!=-1)
+      close(fd);
+
 
 }
 

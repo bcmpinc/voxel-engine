@@ -17,12 +17,12 @@ SDL_PixelFormat fmt = {
 
 int main() {
   IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
-  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/tinplates.jpg"), &fmt, SDL_SWSURFACE);
-  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/tinplates-h.jpg"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* texture = SDL_ConvertSurface(IMG_Load("input/test.png"), &fmt, SDL_SWSURFACE);
+  SDL_Surface* height  = SDL_ConvertSurface(IMG_Load("input/test-h.png"), &fmt, SDL_SWSURFACE);
   
   assert(texture);
   assert(height);
-  pointfile out("vxl/tinplates.vxl");
+  pointfile out("vxl/test.vxl");
   
   fprintf(stderr, "texture: %4dx%4d\n", texture->w, texture->h);
   fprintf(stderr, "height:  %4dx%4d\n", height->w, height->h);
@@ -46,10 +46,10 @@ int main() {
         z[j] = h_px[i] & 0xff;
       }
       for (int j=0; j<4; j++) {
-          out.add(point(x,  ((z[0]               )>>2)+j, y,   (c[0]               )>>0));
-          out.add(point(x+1,((z[0]+z[1]          )>>3)+j, y,   (c[0]+c[1]          )>>1));
-          out.add(point(x,  ((z[0]+z[2]          )>>3)+j, y+1, (c[0]+c[2]          )>>1));
-          out.add(point(x+1,((z[0]+z[1]+z[2]+z[3])>>4)+j, y+1, (c[0]+c[1]+c[2]+c[3])>>2));
+          out.add(point(x,  ((z[0]               )>>0)+j, y,   (c[0]               )>>0));
+          out.add(point(x+1,((z[0]+z[1]          )>>1)+j, y,   (c[0]+c[1]          )>>1));
+          out.add(point(x,  ((z[0]+z[2]          )>>1)+j, y+1, (c[0]+c[2]          )>>1));
+          out.add(point(x+1,((z[0]+z[1]+z[2]+z[3])>>2)+j, y+1, (c[0]+c[1]+c[2]+c[3])>>2));
       }
     }
   }
