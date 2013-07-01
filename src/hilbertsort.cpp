@@ -213,14 +213,22 @@ int main(int argc, char ** argv){
   assert(nodecount[layers]==1);
   layers+=repeat_depth;
   
+  // Determine lower layer prunning
+  printf("[%10.0f] Determine lower layer pruning.\n", t.elapsed());
+  int bottom_layer=0;
+  while(nodecount[bottom_layer]<(nodecount[bottom_layer+1]*3>>1)) bottom_layer++;
+  printf("[%10.0f] Lowest %d layers will be pruned.\n", t.elapsed(), bottom_layer);
+  
   // Report on node counts per layer and determine file size.
   uint64_t nodesum = 0;
   for (int i=0; i<=layers; i++) {
-    if (i) {
+    if (i>bottom_layer) {
       printf("[%10.0f] At layer %2d: %8lu nodes.\n", t.elapsed(), i, nodecount[i]);
       nodesum += nodecount[i];
-    } else {
+    } else if (i==bottom_layer) {
       printf("[%10.0f] At layer %2d: %8lu leaves.\n", t.elapsed(), i, nodecount[i]);
+    } else {
+      printf("[%10.0f] At layer %2d: %8lu pruned nodes.\n", t.elapsed(), i, nodecount[i]);
     }
   }
   uint64_t filesize = nodesum*sizeof(octree);
@@ -239,10 +247,10 @@ int main(int argc, char ** argv){
   uint32_t offset[20], bounds[20];
   for (int j=0; j<20; j++) {offset[j]=0; bounds[j]=0;}
   offset[layers] = 0;
-  for (int i=layers-1; i>=0; i--) {
+  for (int i=layers-1; i>=bottom_layer; i--) {
     offset[i] = offset[i+1] + nodecount[i+1]; 
     bounds[i] = offset[i] + nodecount[i];
-  }
+  }  
   
   // Read voxels and store them.
   printf("[%10.0f] Storing points.\n", t.elapsed());
@@ -254,7 +262,7 @@ int main(int argc, char ** argv){
     uint64_t val = morton3d(p.x, p.y, p.z);
     octree * cur = &root[0];
     //fprintf(stderr,"val=%15lx, p{x=%d,y=%d,x=%d,c=%6x.\n", val, p.x, p.y, p.z, p.c);
-    for (int depth = layers-1; depth >= 0; depth--) {
+    for (int depth = layers-1; depth >= bottom_layer; depth--) {
       int idx = (val >> depth*3)&7;
       //fprintf(stderr,"i=%u, depth=%d, idx=%d, offset[depth]=%u, cur=%ld.\n", i, depth, idx, offset[depth], cur-root);
       if (depth==0) {
