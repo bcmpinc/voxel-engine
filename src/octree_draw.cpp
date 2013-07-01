@@ -127,28 +127,30 @@ static void prepare_cubemap() {
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
     // Compute normals of the 4 planes of the view piramid.
     glm::dvec3 normals[4] = {
-        inverse_orientation*glm::dvec3( frustum::near, 0, -frustum::left  ),
-        inverse_orientation*glm::dvec3(-frustum::near, 0,  frustum::right ),
-        inverse_orientation*glm::dvec3(0,  frustum::near, -frustum::bottom),
-        inverse_orientation*glm::dvec3(0, -frustum::near,  frustum::top   ),
+        inverse_orientation*glm::dvec3( frustum::near, 0, -frustum::left  +8),
+        inverse_orientation*glm::dvec3(-frustum::near, 0,  frustum::right +8),
+        inverse_orientation*glm::dvec3(0,  frustum::near, -frustum::bottom+8),
+        inverse_orientation*glm::dvec3(0, -frustum::near,  frustum::top   +8),
     };
     
     // build the non-leaf layers of the quadtree
     for (int i=0; i<6; i++) {
+        i=1;
         glm::dvec3 face_normals[4];
         for (int j=0; j<4; j++) {
             glm::dvec3 v = normals[j];
             switch (i) {
-                case 0: face_normals[j] = glm::dvec3(v.x,-v.z,v.y); break;
+                case 0: face_normals[j] = glm::dvec3( v.x,-v.z, v.y); break;
                 case 1: face_normals[j] = v; break;
-                case 2: face_normals[j] = glm::dvec3(-v.z,v.y,v.x); break;
-                case 3: face_normals[j] = glm::dvec3(-v.x,v.y,-v.z); break;
-                case 4: face_normals[j] = glm::dvec3(v.z,v.y,-v.x); break;
-                case 5: face_normals[j] = glm::dvec3(v.x,v.z,-v.y); break;
+                case 2: face_normals[j] = glm::dvec3(-v.z, v.y, v.x); break;
+                case 3: face_normals[j] = glm::dvec3(-v.x, v.y,-v.z); break;
+                case 4: face_normals[j] = glm::dvec3( v.z, v.y,-v.x); break;
+                case 5: face_normals[j] = glm::dvec3( v.x, v.z,-v.y); break;
             }
         }
         printf(" [%d]",i);
         cubemap[i].build(face_normals);
+        break;
     }
     printf("\n");
 }

@@ -92,7 +92,7 @@ struct quadtree {
                 return;
             }
         }
-        printf("%ld",i);
+        printf("%lx",i);
         build_fill(i);
     }
     
@@ -100,27 +100,21 @@ struct quadtree {
      * Ensures that a node is non-zero if one of its children is nonzero.
      */
     void build(glm::dvec3 * normals) {
-        build_fill(0);
-        build_fill(1);
-        build_fill(2);
-        build_fill(3);
-        return;
-        map[1]=1;
-        build_fill(2*4);
-        map[2]=1;
-        map[3*4]=1;
-        build_fill((3*4+1)*4);
-        map[3]=1;
-        map[4*4]=1;
-        map[(4*4+1)*4]=1;
-        build_fill(((4*4+1)*4+1)*4);
-        
-        /*
-        build_check(normals,1,-SIZE,0,-SIZE,0);        
-        build_check(normals,0, 0,SIZE,-SIZE,0);
-        build_check(normals,0,-SIZE,0, 0,SIZE);
-        build_check(normals,2, 0,SIZE, 0,SIZE);
-        */
+        int H = SIZE/2;
+        for (int y=0; y<SIZE; y++)
+        for (int x=0; x<SIZE; x++)
+            if (
+                glm::dot(glm::dvec3(x-H,y-H,H), normals[0])>=0 &&
+                glm::dot(glm::dvec3(x-H,y-H,H), normals[1])>=0 &&
+                glm::dot(glm::dvec3(x-H,y-H,H), normals[2])>=0 &&
+                glm::dot(glm::dvec3(x-H,y-H,H), normals[3])>=0
+            ) {
+                face[x+SIZE*y]=0x00ffff;
+            }
+        build_check(normals,0,-SIZE,0,-SIZE,0);
+        build_check(normals,1, 0,SIZE,-SIZE,0);
+        build_check(normals,2,-SIZE,0, 0,SIZE);
+        build_check(normals,3, 0,SIZE, 0,SIZE);
     }
 };
 
