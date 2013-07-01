@@ -18,14 +18,17 @@ struct SubFaceRenderer {
     static_assert(DX==1 || DX==-1, "Wrong DX");
     static_assert(DY==1 || DY==-1, "Wrong DY");
     static const int ONE = SCENE_SIZE;
-    static void traverse(
+    /** Returns true if quadtree node is rendered 
+     * Function is assumed to be called only if quadtree node is not yet fully rendered.
+     */
+    static bool traverse(
         octree* root, Q& f, unsigned int r, uint32_t index, uint32_t color,
         int x1, int x2, int x1p, int x2p, 
         int y1, int y2, int y1p, int y2p
     ){
         // occlusion
-        if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return;
-        if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return;
+        if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return false;
+        if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return false;
                 
         // Recursion
         if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE) {
@@ -38,27 +41,28 @@ struct SubFaceRenderer {
             if (~index) {
                 octree &s = root[index];
                 if (x3<x4 && y3<y4) {
-                    if (s.avgcolor[C         ]>=0) traverse(root, f, r, s.child[C         ], s.avgcolor[C         ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
-                    if (s.avgcolor[C^AX      ]>=0) traverse(root, f, r, s.child[C^AX      ], s.avgcolor[C^AX      ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
-                    if (s.avgcolor[C   ^AY   ]>=0) traverse(root, f, r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
-                    if (s.avgcolor[C^AX^AY   ]>=0) traverse(root, f, r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
+                    if (s.avgcolor[C         ]>=0 && traverse(root, f, r, s.child[C         ], s.avgcolor[C         ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
+                    if (s.avgcolor[C^AX      ]>=0 && traverse(root, f, r, s.child[C^AX      ], s.avgcolor[C^AX      ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
+                    if (s.avgcolor[C   ^AY   ]>=0 && traverse(root, f, r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
+                    if (s.avgcolor[C^AX^AY   ]>=0 && traverse(root, f, r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
                 }
-                if (s.avgcolor[C      ^AZ]>=0) traverse(root, f, r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                if (s.avgcolor[C^AX   ^AZ]>=0) traverse(root, f, r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                if (s.avgcolor[C   ^AY^AZ]>=0) traverse(root, f, r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
-                if (s.avgcolor[C^AX^AY^AZ]>=0) traverse(root, f, r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
+                if (s.avgcolor[C      ^AZ]>=0 && traverse(root, f, r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
+                if (s.avgcolor[C^AX   ^AZ]>=0 && traverse(root, f, r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
+                if (s.avgcolor[C   ^AY^AZ]>=0 && traverse(root, f, r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
+                if (s.avgcolor[C^AX^AY^AZ]>=0 && traverse(root, f, r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
             } else {
                 if (x3<x4 && y3<y4) {
                     // Skip nearest cube to avoid infinite recursion.
-                    traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p);
-                    traverse(root, f, r, ~0u, color, 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
-                    traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p);
+                    if (traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
+                    if (traverse(root, f, r, ~0u, color, 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
+                    if (traverse(root, f, r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
                 }
-                traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p);
-                traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
-                traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p);
+                if (traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
+                if (traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
+                if (traverse(root, f, r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
+                if (traverse(root, f, r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
             }
+            return false;
         } else {
             int xm  = (x1 +x2 )/2; 
             int xmp = (x1p+x2p)/2; 
@@ -78,6 +82,7 @@ struct SubFaceRenderer {
                 if (f.map[r*4+7]) paint(f, r*4+7, color, xm, x2, xmp, x2p, ym, y2, ymp, y2p); 
             }
             f.compute(r);
+            return !f.map[r];
         }
     }
     
