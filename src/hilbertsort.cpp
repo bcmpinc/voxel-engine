@@ -146,8 +146,8 @@ int main(int argc, char ** argv){
     if (errno) {perror("Could not parse depth"); exit(1);}
     assert(endptr);
     assert(endptr[0]==0);
-    assert(repeat_depth>=0 && repeat_depth<16);
-    int dirs = __builtin_popcount(7^repeat_mask);
+    assert(repeat_depth>=1 && repeat_depth<16);
+    int dirs = (0x01121223>>repeat_mask*4) & 3;
     printf("[%10.0f] Result cloned %d times at %d layers in %s%s%s direction(s).\n", t.elapsed(), 1<<dirs*repeat_depth, repeat_depth, repeat_mask&4?"":"X", repeat_mask&2?"":"Y", repeat_mask&1?"":"Z");
   }
 
@@ -255,7 +255,7 @@ int main(int argc, char ** argv){
   for (i=0; i<in.length; i++) {
     if (i && (i&0x3fffff)==0) printf("[%10.0f] Stored %6.2f%% points (%luMiB).\n", t.elapsed(), i*100.0/in.length, nodes_created*sizeof(octree)>>20);
     point p(in.list[i]);
-    uint64_t val = morton3d(p.x, p.y, p.z);
+    uint64_t val = morton3d(p.z, p.y, p.x);
     octree * cur = &root[0];
     //fprintf(stderr,"val=%15lx, p{x=%d,y=%d,x=%d,c=%6x.\n", val, p.x, p.y, p.z, p.c);
     for (int depth = layers-1; depth >= bottom_layer; depth--) {

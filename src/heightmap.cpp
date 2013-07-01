@@ -36,6 +36,8 @@ int main() {
   int * t_px = (int*)texture->pixels;
   int * h_px = (int*)height->pixels;
   
+  static const int hmf = 1;
+  
   for(int y=0;y<h;y++) {
     for(int x=0;x<w;x++) {
       int c[4]; 
@@ -46,10 +48,10 @@ int main() {
         z[j] = h_px[i] & 0xff;
       }
       for (int j=0; j<4; j++) {
-          out.add(point(x,  ((z[0]               )>>0)+j, y,   (c[0]               )>>0));
-          out.add(point(x+1,((z[0]+z[1]          )>>1)+j, y,   (c[0]+c[1]          )>>1));
-          out.add(point(x,  ((z[0]+z[2]          )>>1)+j, y+1, (c[0]+c[2]          )>>1));
-          out.add(point(x+1,((z[0]+z[1]+z[2]+z[3])>>2)+j, y+1, (c[0]+c[1]+c[2]+c[3])>>2));
+          out.add(point(x*2,  ((z[0]               )<<2>>0>>hmf)+j, y*2,   (c[0]               )>>0));
+          out.add(point(x*2+1,((z[0]+z[1]          )<<2>>1>>hmf)+j, y*2,   (c[0]+c[1]          )>>1));
+          out.add(point(x*2,  ((z[0]+z[2]          )<<2>>1>>hmf)+j, y*2+1, (c[0]+c[2]          )>>1));
+          out.add(point(x*2+1,((z[0]+z[1]+z[2]+z[3])<<2>>2>>hmf)+j, y*2+1, (c[0]+c[1]+c[2]+c[3])>>2));
       }
     }
   }
