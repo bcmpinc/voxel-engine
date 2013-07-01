@@ -101,7 +101,7 @@ struct SubFaceRenderer {
     static inline void paint(Q& f, unsigned int r, int color, int x1, int x2, int x1p, int x2p, int y1, int y2, int y1p, int y2p)  {
         if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return;
         if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return;
-        f.face[r-Q::M] = color; 
+        f.set_face(r, color); 
         f.map[r] = 0;
     }
 };
@@ -171,31 +171,31 @@ static void draw_cubemap() {
                 if (p.x>0) {
                     int fx = SIZE*(-p.z/ax/2+0.5);
                     int fy = SIZE*(-p.y/ax/2+0.5);
-                    pix(x, y, cubemap[2].get_face(fx,fy));
+                    pix(x, y, cubemap[2].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.z/ax/2+0.5);
                     int fy = SIZE*(-p.y/ax/2+0.5);
-                    pix(x, y, cubemap[4].get_face(fx,fy));
+                    pix(x, y, cubemap[4].face[fx+fy*SIZE]);
                 }
             } else if (ay>=ax && ay>=az) {
                 if (p.y>0) {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(p.z/ay/2+0.5);
-                    pix(x, y, cubemap[0].get_face(fx,fy));
+                    pix(x, y, cubemap[0].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(-p.z/ay/2+0.5);
-                    pix(x, y, cubemap[5].get_face(fx,fy));
+                    pix(x, y, cubemap[5].face[fx+fy*SIZE]);
                 }
             } else if (az>=ax && az>=ay) {
                 if (p.z>0) {
                     int fx = SIZE*(p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    pix(x, y, cubemap[1].get_face(fx,fy));
+                    int fy = SIZE*(-p.y/az/2+0.5);
+                    pix(x, y, cubemap[1].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(-p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    pix(x, y, cubemap[3].get_face(fx,fy));
+                    int fy = SIZE*(-p.y/az/2+0.5);
+                    pix(x, y, cubemap[3].face[fx+fy*SIZE]);
                 }
             }
         }

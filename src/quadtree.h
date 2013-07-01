@@ -38,12 +38,19 @@ struct quadtree {
         face[x | (y<<1)] = 0x3f7fff;
     }
 
-    uint32_t get_face(type x, type y) {
-        for (type i=0; i<4; i++) {
-            x = (x | (x << quadtree_internal::S[i])) & quadtree_internal::B[i];
-            y = (y | (y << quadtree_internal::S[i])) & quadtree_internal::B[i];
+    void set_face(type v, int color) {
+        v -= M;
+        int x = v;
+        int y = v>>1;
+        for (type i=3; i>=0; i--) {
+            x &= quadtree_internal::B[i];
+            y &= quadtree_internal::B[i];
+            x = (x | (x >> quadtree_internal::S[i]));
+            y = (y | (y >> quadtree_internal::S[i]));
         }
-        return face[x | (y<<1)];
+        x &= 0xffff;
+        y &= 0xffff;
+        face[x + y*SIZE] = color;
     }    
     
     /**
