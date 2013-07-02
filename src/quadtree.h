@@ -81,12 +81,12 @@ struct quadtree {
     }
     
     void build_check(glm::dvec3 * normals, type i, int x1, int x2, int y1, int y2) {
-        for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
             if (
-                glm::dot(glm::dvec3(x1,y1,SIZE), normals[i])<0 &&
-                glm::dot(glm::dvec3(x2,y1,SIZE), normals[i])<0 &&
-                glm::dot(glm::dvec3(x1,y2,SIZE), normals[i])<0 &&
-                glm::dot(glm::dvec3(x2,y2,SIZE), normals[i])<0
+                glm::dot(glm::dvec3(x1,y1,SIZE), normals[j])<0 &&
+                glm::dot(glm::dvec3(x2,y1,SIZE), normals[j])<0 &&
+                glm::dot(glm::dvec3(x1,y2,SIZE), normals[j])<0 &&
+                glm::dot(glm::dvec3(x2,y2,SIZE), normals[j])<0
             ) {
                 map[i]=0;
                 return;
