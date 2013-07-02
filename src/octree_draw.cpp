@@ -17,6 +17,7 @@ namespace frustum {
     static const int near   =  SCREEN_HEIGHT*2;
     static const int cubepos=  SCREEN_WIDTH * 2; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
     static const int far    =  SCREEN_WIDTH * 4; // > sqrt(3)*cubepos 
+    static const int slack  =  0;
 }
 
 using std::max;
@@ -127,15 +128,14 @@ static void prepare_cubemap() {
     glm::dmat3 inverse_orientation = glm::transpose(orientation);
     // Compute normals of the 4 planes of the view piramid.
     glm::dvec3 normals[4] = {
-        inverse_orientation*glm::dvec3( frustum::near, 0, -frustum::left  +8),
-        inverse_orientation*glm::dvec3(-frustum::near, 0,  frustum::right +8),
-        inverse_orientation*glm::dvec3(0,  frustum::near, -frustum::bottom+8),
-        inverse_orientation*glm::dvec3(0, -frustum::near,  frustum::top   +8),
+        inverse_orientation*glm::dvec3( frustum::near, 0, -frustum::left  +frustum::slack),
+        inverse_orientation*glm::dvec3(-frustum::near, 0,  frustum::right +frustum::slack),
+        inverse_orientation*glm::dvec3(0,  frustum::near, -frustum::bottom+frustum::slack),
+        inverse_orientation*glm::dvec3(0, -frustum::near,  frustum::top   +frustum::slack),
     };
     
     // build the non-leaf layers of the quadtree
     for (int i=0; i<6; i++) {
-        i=1;
         glm::dvec3 face_normals[4];
         for (int j=0; j<4; j++) {
             glm::dvec3 v = normals[j];
@@ -148,11 +148,8 @@ static void prepare_cubemap() {
                 case 5: face_normals[j] = glm::dvec3( v.x, v.z,-v.y); break;
             }
         }
-        printf(" [%d]",i);
         cubemap[i].build(face_normals);
-        break;
     }
-    printf("\n");
 }
 
 static void draw_cubemap() {
@@ -211,11 +208,13 @@ void octree_draw(uint32_t** cubepixs, octree* root) {
     int z = position.z;
     int W = SCENE_SIZE;
 
-    Timer t1;
+    Timer t0;
     for(int i=0; i<6; i++) {
         memcpy(cubemap[i].face,cubepixs[i],sizeof(cubemap[i].face));
     }
+    double d0 = t0.elapsed();
     
+    Timer t1;
     prepare_cubemap();
     double d1 = t1.elapsed();
     
@@ -270,7 +269,11 @@ void octree_draw(uint32_t** cubepixs, octree* root) {
     draw_cubemap();
     double d3 = t3.elapsed();
     
-    printf("%6.2f | %6.2f %6.2f %6.2f\n", t1.elapsed(), d1,d2,d3);
+    Timer t4;
+    draw_box();
+    double d4 = t4.elapsed();
+    
+    printf("%6.2f | C%6.2f P%6.2f Q%6.2f R%6.2f B%6.2f\n", t0.elapsed(), d0,d1,d2,d3,d4);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 

@@ -81,6 +81,7 @@ struct quadtree {
     }
     
     void build_check(glm::dvec3 * normals, type i, int x1, int x2, int y1, int y2) {
+        // Check if entirely outside of frustum.
         for (int j=0; j<4; j++) {
             if (
                 glm::dot(glm::dvec3(x1,y1,SIZE), normals[j])<0 &&
@@ -92,7 +93,26 @@ struct quadtree {
                 return;
             }
         }
-        printf("%lx",i);
+        // Check if partially out of frustum.
+        if (i<L) {
+            for (int j=0; j<4; j++) {
+                if (
+                    glm::dot(glm::dvec3(x1,y1,SIZE), normals[j])<0 ||
+                    glm::dot(glm::dvec3(x2,y1,SIZE), normals[j])<0 ||
+                    glm::dot(glm::dvec3(x1,y2,SIZE), normals[j])<0 ||
+                    glm::dot(glm::dvec3(x2,y2,SIZE), normals[j])<0
+                ) {
+                    int xm = (x1+x2)/2;
+                    int ym = (y1+y2)/2;
+                    map[i]=1;
+                    build_check(normals,i*4+4,x1,xm,y1,ym);
+                    build_check(normals,i*4+5,xm,x2,y1,ym);
+                    build_check(normals,i*4+6,x1,xm,ym,y2);
+                    build_check(normals,i*4+7,xm,x2,ym,y2);
+                    return;
+                }
+            }
+        }
         build_fill(i);
     }
     
@@ -100,17 +120,6 @@ struct quadtree {
      * Ensures that a node is non-zero if one of its children is nonzero.
      */
     void build(glm::dvec3 * normals) {
-        int H = SIZE/2;
-        for (int y=0; y<SIZE; y++)
-        for (int x=0; x<SIZE; x++)
-            if (
-                glm::dot(glm::dvec3(x-H,y-H,H), normals[0])>=0 &&
-                glm::dot(glm::dvec3(x-H,y-H,H), normals[1])>=0 &&
-                glm::dot(glm::dvec3(x-H,y-H,H), normals[2])>=0 &&
-                glm::dot(glm::dvec3(x-H,y-H,H), normals[3])>=0
-            ) {
-                face[x+SIZE*y]=0x00ffff;
-            }
         build_check(normals,0,-SIZE,0,-SIZE,0);
         build_check(normals,1, 0,SIZE,-SIZE,0);
         build_check(normals,2,-SIZE,0, 0,SIZE);
