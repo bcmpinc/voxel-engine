@@ -51,7 +51,7 @@ int main(int argc, char ** argv) {
     if(minx>x) minx=x; if(maxx<x) maxx=x;
     if(miny>y) miny=y; if(maxy<y) maxy=y;
     if(minz>z) minz=z; if(maxz<z) maxz=z;
-    out.add(point((int)(x+C), (int)(y+C), (int)(z+C), (r<<16)+(g<<8)+b));
+    out.add(point((int)(x+C), (int)(z+C), (int)(y+C), (r<<16)+(g<<8)+b));
     line++;
   }
   fprintf(stderr,"x: %d - %d\n", minx, maxx);
