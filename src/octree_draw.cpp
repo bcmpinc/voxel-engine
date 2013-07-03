@@ -7,19 +7,6 @@
 #include "timing.h"
 #include "octree.h"
 
-namespace frustum {
-    // Compute frustum parameters.
-    static const int left   = -SCREEN_WIDTH;
-    static const int right  =  SCREEN_WIDTH;
-    static const int top    =  SCREEN_HEIGHT;
-    static const int bottom = -SCREEN_HEIGHT;
-    //static const int near   =  SCREEN_HEIGHT; // I.e. 90 degree FOV.
-    static const int near   =  SCREEN_HEIGHT*2;
-    static const int cubepos=  SCREEN_WIDTH * 2; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
-    static const int far    =  SCREEN_WIDTH * 4; // > sqrt(3)*cubepos 
-    static const int slack  =  0;
-}
-
 using std::max;
 using std::min;
 
@@ -170,31 +157,31 @@ static void draw_cubemap() {
                 if (p.x>0) {
                     int fx = SIZE*(-p.z/ax/2+0.5);
                     int fy = SIZE*(p.y/ax/2+0.5);
-                    pix(x, y, cubemap[2].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[2].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.z/ax/2+0.5);
                     int fy = SIZE*(p.y/ax/2+0.5);
-                    pix(x, y, cubemap[4].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[4].face[fx+fy*SIZE]);
                 }
             } else if (ay>=ax && ay>=az) {
                 if (p.y>0) {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(-p.z/ay/2+0.5);
-                    pix(x, y, cubemap[0].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[0].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(p.x/ay/2+0.5);
                     int fy = SIZE*(p.z/ay/2+0.5);
-                    pix(x, y, cubemap[5].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[5].face[fx+fy*SIZE]);
                 }
             } else if (az>=ax && az>=ay) {
                 if (p.z>0) {
                     int fx = SIZE*(p.x/az/2+0.5);
                     int fy = SIZE*(p.y/az/2+0.5);
-                    pix(x, y, cubemap[1].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[1].face[fx+fy*SIZE]);
                 } else {
                     int fx = SIZE*(-p.x/az/2+0.5);
                     int fy = SIZE*(p.y/az/2+0.5);
-                    pix(x, y, cubemap[3].face[fx+fy*SIZE]);
+                    //pix(x, y, cubemap[3].face[fx+fy*SIZE]);
                 }
             }
         }
@@ -202,7 +189,7 @@ static void draw_cubemap() {
 }
 
 /** Draw anything on the screen. */
-void octree_draw(uint32_t** cubepixs, octree* root) {
+void octree_draw(octree* root) {
     int x = position.x;
     int y = position.y;
     int z = position.z;
@@ -210,7 +197,7 @@ void octree_draw(uint32_t** cubepixs, octree* root) {
 
     Timer t0;
     for(int i=0; i<6; i++) {
-        memcpy(cubemap[i].face,cubepixs[i],sizeof(cubemap[i].face));
+        //memcpy(cubemap[i].face,cubepixs[i],sizeof(cubemap[i].face));
     }
     double d0 = t0.elapsed();
     

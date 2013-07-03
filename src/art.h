@@ -9,9 +9,22 @@
 void init_screen(const char * caption);
 void flip_screen();
 
-void pix(uint32_t x, uint32_t y, uint32_t c);
-uint32_t rgb(uint32_t r, uint32_t g, uint32_t b);
-uint32_t rgb(float r, float g, float b);
 void draw_box();
+void draw_cubemap(uint32_t texture, int face);
+
+void load_texture(uint32_t id, const char * filename);
+
+namespace frustum {
+    // Compute frustum parameters.
+    const int left   = -SCREEN_WIDTH;
+    const int right  =  SCREEN_WIDTH;
+    const int top    =  SCREEN_HEIGHT;
+    const int bottom = -SCREEN_HEIGHT;
+    //const int near   =  SCREEN_HEIGHT; // I.e. 90 degree FOV.
+    const int near   =  SCREEN_HEIGHT*2;
+    const int cubepos=  SCREEN_WIDTH * 4; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
+    const int far    =  SCREEN_WIDTH * 8; // > sqrt(3)*cubepos 
+    const int slack  =  0;
+}
 
 #endif
