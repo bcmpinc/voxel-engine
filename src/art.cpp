@@ -64,6 +64,7 @@ void init_screen(const char * caption) {
     // Set flags
     glClearColor(0.0f, 0.5f, 1.0f, 0.0f);
     glDisable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     // Frustum
     glMatrixMode(GL_PROJECTION);
@@ -141,45 +142,36 @@ void draw_box() {
     glDisable(GL_TEXTURE_2D);
 }
 
-static const GLfloat squarevert[] = {
-    -frustum::cubepos, -frustum::cubepos, frustum::cubepos,
-     frustum::cubepos, -frustum::cubepos, frustum::cubepos,
-     frustum::cubepos,  frustum::cubepos, frustum::cubepos,
-    -frustum::cubepos,  frustum::cubepos, frustum::cubepos,
+static const glm::dvec3 cubemap_face[] = {
+    2.*glm::dvec3(frustum::left,  frustum::bottom, frustum::near),
+    2.*glm::dvec3(frustum::right, frustum::bottom, frustum::near),
+    2.*glm::dvec3(frustum::right, frustum::top,    frustum::near),
+    2.*glm::dvec3(frustum::left,  frustum::top,    frustum::near),
 };
 
-static const GLfloat squareuv[] = {
-    0, 0,
-    1, 0,
-    1, 1,
-    0, 1
-};
 
-void draw_cubemap(uint32_t texture, int face) {
-    assert(face>=0 && face<6);
-    glm::dmat4 projection_matrix(orientation);
-    switch(face) {
-        case 0: projection_matrix = glm::rotate(projection_matrix, -90., glm::dvec3(1,0,0)); break;
-        case 1: break;
-        case 2: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(0,1,0)); break;
-        case 3: projection_matrix = glm::rotate(projection_matrix, 180., glm::dvec3(0,1,0)); break;
-        case 4: projection_matrix = glm::rotate(projection_matrix, 270., glm::dvec3(0,1,0)); break;
-        case 5: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(1,0,0)); break;
+void draw_cubemap(GLuint texture) {
+    // Cubemap rendered fine, but upside down. I'm not sure why.
+    // Using 'inverse-y coordinate' hack to patch this.
+    glm::dmat3 inverse_orientation = glm::dmat3(1,0,0,0,-1,0,0,0,1)*glm::transpose(orientation);
+    glm::dvec3 cubemap_texcoords[4];
+    for (int i=0; i<4; i++) {
+        cubemap_texcoords[i] = inverse_orientation*cubemap_face[i];
     }
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glLoadMatrixd(glm::value_ptr(projection_matrix));
+    glEnable(GL_TEXTURE_CUBE_MAP);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+    glLoadIdentity();
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 3*sizeof(GLfloat), squarevert);
-    glTexCoordPointer(2, GL_FLOAT, 2*sizeof(GLfloat), squareuv);
+    glVertexPointer(3, GL_DOUBLE, sizeof(glm::dvec3), glm::value_ptr(cubemap_face[0]));
+    glTexCoordPointer(3, GL_DOUBLE, sizeof(glm::dvec3), glm::value_ptr(cubemap_texcoords[0]));
     glDrawArrays(GL_QUADS, 0, 4);
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_TEXTURE_CUBE_MAP);
 }
 
-void load_texture(uint32_t id, const char* filename) {
+static void load_image_data(uint32_t target, const char* filename) {
     SDL_Surface * surf = IMG_Load(filename);
     if (!surf) {
         fprintf(stderr, "Failed to load '%s': %s\n", filename, SDL_GetError());
@@ -233,17 +225,9 @@ void load_texture(uint32_t id, const char* filename) {
         memcpy(&pixs[row*(surf->h-y-1)],t,row);
     }
 
-    // Bind the texture object
-    glBindTexture(GL_TEXTURE_2D, id);
- 
-    // Set the texture's stretching properties
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
  
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 0, surf->format->BytesPerPixel, surf->w, surf->h, 0,
+    glTexImage2D( target, 0, surf->format->BytesPerPixel, surf->w, surf->h, 0,
                       texture_format, GL_UNSIGNED_BYTE, surf->pixels );
     
     // Free the surface
@@ -252,3 +236,44 @@ void load_texture(uint32_t id, const char* filename) {
     printf("Successfully loaded image '%s'.\n",filename);
 }
 
+GLuint load_texture(const char* filename) {
+    GLuint id;
+    glGenTextures(1, &id);
+
+    // Set the texture's stretching properties
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
+    
+    // Bind the texture object
+    glBindTexture(GL_TEXTURE_2D, id);
+    load_image_data( GL_TEXTURE_2D, filename );
+    return id;
+}
+
+
+static GLuint cubetargets[6] = {
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+};
+
+GLuint load_cubemap(const char * format) {
+    GLuint id;
+    glGenTextures(1,&id);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, id);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    int len = strlen(format);
+    char buf[len];
+    for (int i=0; i<6; i++) {
+        sprintf(buf, format, i);
+        load_image_data(cubetargets[i], buf);
+    }
+    return id;
+}

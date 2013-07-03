@@ -16,34 +16,18 @@
 
 using namespace std;
 
-
-
-void load_cubemap(uint32_t * cubemap, const char * format) {
-    glGenTextures(6,cubemap);
-    int len = strlen(format);
-    char buf[len];
-    for (int i=0; i<6; i++) {
-        sprintf(buf, format, i);
-        load_texture(cubemap[i], buf);
-    }
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
     init_screen("Cubemap test renderer");
     
-    uint32_t cubepixs[6];
-    load_cubemap(cubepixs, "img/cubemap%d.png");
+    uint32_t cubemap = load_cubemap("img/cubemap%d.png");
     
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            for (int i=0; i<6; i++) {
-                draw_cubemap(cubepixs[i], i);
-            }
-            draw_box();
+            draw_cubemap(cubemap);
+            //draw_box();
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

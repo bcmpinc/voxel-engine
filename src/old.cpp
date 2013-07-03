@@ -359,3 +359,42 @@ static void load_shaders() {
         "shaders/texture.frag"
     );
 }
+
+static const GLfloat squarevert[] = {
+    -frustum::cubepos, -frustum::cubepos, frustum::cubepos,
+     frustum::cubepos, -frustum::cubepos, frustum::cubepos,
+     frustum::cubepos,  frustum::cubepos, frustum::cubepos,
+    -frustum::cubepos,  frustum::cubepos, frustum::cubepos,
+};
+
+static const GLfloat squareuv[] = {
+    0, 0,
+    1, 0,
+    1, 1,
+    0, 1
+};
+
+void draw_cubemap(uint32_t texture, int face) {
+    assert(face>=0 && face<6);
+    glm::dmat4 projection_matrix(orientation);
+    switch(face) {
+        case 0: projection_matrix = glm::rotate(projection_matrix, -90., glm::dvec3(1,0,0)); break;
+        case 1: break;
+        case 2: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(0,1,0)); break;
+        case 3: projection_matrix = glm::rotate(projection_matrix, 180., glm::dvec3(0,1,0)); break;
+        case 4: projection_matrix = glm::rotate(projection_matrix, 270., glm::dvec3(0,1,0)); break;
+        case 5: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(1,0,0)); break;
+    }
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glLoadMatrixd(glm::value_ptr(projection_matrix));
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 3*sizeof(GLfloat), squarevert);
+    glTexCoordPointer(2, GL_FLOAT, 2*sizeof(GLfloat), squareuv);
+    glDrawArrays(GL_QUADS, 0, 4);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_TEXTURE_2D);
+}
+
