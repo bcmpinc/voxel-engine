@@ -22,79 +22,7 @@ using glm::max;
 namespace {
     // The screen surface
     SDL_Surface *screen = NULL;
-    GLuint shader_texture;
-    const glm::dmat4 frustum_matrix = glm::frustum<double>(frustum::left, frustum::right, frustum::bottom, frustum::top, frustum::near, frustum::far);
-}
-
-static void compile_shader(GLuint shader, const char * filename) {
-    printf("Compiling shader : %s\n", filename);
-    assert(shader);
-    
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1) {perror("Could not open file"); exit(1);}
-    int size = lseek(fd, 0, SEEK_END);
-    GLchar * data = (GLchar *)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-    if (data == MAP_FAILED) {perror("Could not map file to memory"); exit(1);}
-
-    // Compile the shader    
-    glShaderSource(shader, 1, &data, &size);
-    glCompileShader(shader);
-
-    // Check compile result
-    int result;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
-    if (!result) {
-        int info_log_length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
-        if ( info_log_length > 0 ) {
-            char info_log[info_log_length];
-            glGetShaderInfoLog(shader, info_log_length, NULL, info_log);
-            printf("Compile error: %s\n", info_log);
-        }
-    }
-    
-    munmap(data, size);
-    close(fd);
-}
-
-static GLuint link_program(const char * file_vert, const char * file_frag) {
-    GLuint shader_vert = glCreateShader(GL_VERTEX_SHADER);
-    GLuint shader_frag = glCreateShader(GL_FRAGMENT_SHADER);
-    compile_shader(shader_vert, file_vert);
-    compile_shader(shader_frag, file_frag);
-
-    // Link the program
-    printf("Linking shader program\n");
-    GLuint program = glCreateProgram();
-    glAttachShader(program, shader_vert);
-    glAttachShader(program, shader_frag);
-    glLinkProgram(program);
-
-    // Check the program result
-    int result;
-    glGetProgramiv(program, GL_LINK_STATUS, &result);
-    if (!result) {
-        int info_log_length;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
-        if ( info_log_length > 0 ) {
-            char info_log[info_log_length];
-            glGetProgramInfoLog(program, info_log_length, NULL, info_log);
-            printf("Link error: %s\n", info_log);
-            exit(1);
-        }
-    }
-    
-    glDeleteShader(shader_vert);
-    glDeleteShader(shader_frag);
-
-    return program;
-}
-
-static void load_shaders() {
-    shader_texture = link_program(
-        "shaders/texture.vert",
-        "shaders/texture.frag"
-    );
+    const glm::dmat4 frustum_matrix = glm::scale(glm::frustum<double>(frustum::left, frustum::right, frustum::bottom, frustum::top, frustum::near, frustum::far),glm::dvec3(1,1,-1));
 }
 
 void init_screen(const char * caption) {
@@ -129,13 +57,16 @@ void init_screen(const char * caption) {
     printf("Renderer: %s\n", glGetString(GL_RENDERER));
     printf("Version:  %s\n", glGetString(GL_VERSION));
     
-    // Load shaders
-    load_shaders();
-    
     // Set flags
     glClearColor(0.0f, 0.5f, 1.0f, 0.0f);
     glDisable(GL_DEPTH_TEST);
 
+    // Frustum
+    glMatrixMode(GL_PROJECTION);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT); // update context viewport size
+    glLoadMatrixd(glm::value_ptr(frustum_matrix));
+    glMatrixMode(GL_MODELVIEW);
+    
     // Other
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -148,6 +79,8 @@ void flip_screen() {
 }
 
 void draw_box() {
+    glm::dvec3 box_vert[48];
+    int box_color[48];
     glm::dvec3 vertices[8]={
         glm::dvec3(-1,-1,-1),
         glm::dvec3( 1,-1,-1),
@@ -159,10 +92,11 @@ void draw_box() {
         glm::dvec3( 1, 1, 1),
     };
     for (int a=0; a<8; a++) {
-        vertices[a] = orientation * vertices[a];
+        vertices[a] = frustum::cubepos * orientation * vertices[a];
     }
+    int i=0;
     for (int a=0; a<8; a++) {
-        for (int b=0; b<8; b++) {
+        for (int b=0; b<a; b++) {
             int c = a^b;
             glm::dvec3 va = vertices[a];
             glm::dvec3 vb = vertices[b];
@@ -170,30 +104,44 @@ void draw_box() {
                 case 1:
                 case 2:
                 case 4:
-//                    line(va,vb, 0x000000);
+                    box_color[i]=0x000000; box_vert[i]=va; i++;
+                    box_color[i]=0x000000; box_vert[i]=vb; i++;
                     break;
                 case 3:
-//                    line(va,vb, 0x0000fe>>!(a&b));
+                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=va; i++;
+                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=vb; i++;
                     break;
                 case 5:
-//                    line(va,vb, 0x00fe00>>!(a&b));
+                    box_color[i]=0x00fe00>>!(a&b); box_vert[i]=va; i++;
+                    box_color[i]=0x00fe00>>!(a&b); box_vert[i]=vb; i++;
                     break;
                 case 6:
-//                    line(va,vb, 0xfe0000>>!(a&b));
+                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=va; i++;
+                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=vb; i++;
                     break;
             }
         }
     }
+    fprintf(stderr,"box verts %d\n", i);
+    glLoadIdentity();
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glVertexPointer(3, GL_DOUBLE, sizeof(glm::dvec3), glm::value_ptr(box_vert[0]));
+    glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(int), box_color);
+    glDrawArrays(GL_LINES, 0, 48);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisable(GL_TEXTURE_2D);
 }
 
-static const GLshort squarevert[] = {
-    -frustum::cubepos, -frustum::cubepos,
-     frustum::cubepos, -frustum::cubepos,
-     frustum::cubepos,  frustum::cubepos,
-    -frustum::cubepos,  frustum::cubepos
+static const GLfloat squarevert[] = {
+    -frustum::cubepos, -frustum::cubepos, frustum::cubepos,
+     frustum::cubepos, -frustum::cubepos, frustum::cubepos,
+     frustum::cubepos,  frustum::cubepos, frustum::cubepos,
+    -frustum::cubepos,  frustum::cubepos, frustum::cubepos,
 };
 
-static const GLshort squareuv[] = {
+static const GLfloat squareuv[] = {
     0, 0,
     1, 0,
     1, 1,
@@ -202,21 +150,26 @@ static const GLshort squareuv[] = {
 
 void draw_cubemap(uint32_t texture, int face) {
     assert(face>=0 && face<6);
-    glUseProgram(shader_texture);
-    GLuint projection = glGetAttribLocation(shader_texture, "projection");
-    GLuint vert = glGetAttribLocation(shader_texture, "vertexPos");
-    GLuint uv = glGetAttribLocation(shader_texture, "vertexUV");
-    glm::mat4 projection_matrix(glm::dmat4(orientation)*frustum_matrix);
-    glUniformMatrix4fv(projection, 1, false, glm::value_ptr(projection_matrix));
-    glEnableVertexAttribArray(vert);
-    glVertexAttribPointer(vert, 4, GL_SHORT, false, sizeof(GLshort), squarevert);
-    glEnableVertexAttribArray(uv);
-    glVertexAttribPointer(uv, 4, GL_SHORT, false, sizeof(GLshort), squareuv);
-    
+    glm::dmat4 projection_matrix(orientation);
+    switch(face) {
+        case 0: projection_matrix = glm::rotate(projection_matrix, -90., glm::dvec3(1,0,0)); break;
+        case 1: break;
+        case 2: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(0,1,0)); break;
+        case 3: projection_matrix = glm::rotate(projection_matrix, 180., glm::dvec3(0,1,0)); break;
+        case 4: projection_matrix = glm::rotate(projection_matrix, 270., glm::dvec3(0,1,0)); break;
+        case 5: projection_matrix = glm::rotate(projection_matrix,  90., glm::dvec3(1,0,0)); break;
+    }
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glLoadMatrixd(glm::value_ptr(projection_matrix));
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 3*sizeof(GLfloat), squarevert);
+    glTexCoordPointer(2, GL_FLOAT, 2*sizeof(GLfloat), squareuv);
     glDrawArrays(GL_QUADS, 0, 4);
-    
-    glDisableVertexAttribArray(vert);
-    glDisableVertexAttribArray(uv);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_TEXTURE_2D);
 }
 
 void load_texture(uint32_t id, const char* filename) {
@@ -283,7 +236,7 @@ void load_texture(uint32_t id, const char* filename) {
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
  
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 4, surf->format->BytesPerPixel, surf->w, surf->h, 0,
+    glTexImage2D( GL_TEXTURE_2D, 0, surf->format->BytesPerPixel, surf->w, surf->h, 0,
                       texture_format, GL_UNSIGNED_BYTE, surf->pixels );
     
     // Free the surface

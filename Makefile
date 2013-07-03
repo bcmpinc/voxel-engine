@@ -46,6 +46,7 @@ $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
 $(eval $(call target,heightmap,heightmap pointset))
 $(eval $(call target,build_db,build_db pointset timing octree_file))
+$(eval $(call target,cubemap,cubemap events art timing))
 
 # Dependencies
 ifneq "$(MAKECMDGOALS)" "clean"

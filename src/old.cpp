@@ -289,3 +289,73 @@ void copy_cubemap(SDL_Surface ** src, SDL_Surface ** dest) {
     }
 }
 
+static void compile_shader(GLuint shader, const char * filename) {
+    printf("Compiling shader : %s\n", filename);
+    assert(shader);
+    
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {perror("Could not open file"); exit(1);}
+    int size = lseek(fd, 0, SEEK_END);
+    GLchar * data = (GLchar *)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    if (data == MAP_FAILED) {perror("Could not map file to memory"); exit(1);}
+
+    // Compile the shader    
+    glShaderSource(shader, 1, &data, &size);
+    glCompileShader(shader);
+
+    // Check compile result
+    int result;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
+    if (!result) {
+        int info_log_length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
+        if ( info_log_length > 0 ) {
+            char info_log[info_log_length];
+            glGetShaderInfoLog(shader, info_log_length, NULL, info_log);
+            printf("Compile error: %s\n", info_log);
+        }
+    }
+    
+    munmap(data, size);
+    close(fd);
+}
+
+static GLuint link_program(const char * file_vert, const char * file_frag) {
+    GLuint shader_vert = glCreateShader(GL_VERTEX_SHADER);
+    GLuint shader_frag = glCreateShader(GL_FRAGMENT_SHADER);
+    compile_shader(shader_vert, file_vert);
+    compile_shader(shader_frag, file_frag);
+
+    // Link the program
+    printf("Linking shader program\n");
+    GLuint program = glCreateProgram();
+    glAttachShader(program, shader_vert);
+    glAttachShader(program, shader_frag);
+    glLinkProgram(program);
+
+    // Check the program result
+    int result;
+    glGetProgramiv(program, GL_LINK_STATUS, &result);
+    if (!result) {
+        int info_log_length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
+        if ( info_log_length > 0 ) {
+            char info_log[info_log_length];
+            glGetProgramInfoLog(program, info_log_length, NULL, info_log);
+            printf("Link error: %s\n", info_log);
+            exit(1);
+        }
+    }
+    
+    glDeleteShader(shader_vert);
+    glDeleteShader(shader_frag);
+
+    return program;
+}
+
+static void load_shaders() {
+    shader_texture = link_program(
+        "shaders/texture.vert",
+        "shaders/texture.frag"
+    );
+}
