@@ -32,14 +32,18 @@ int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     position = glm::dvec3(0, -1000000, 0);
     
-    uint32_t cubemap = load_cubemap("img/cubemap%d.png");
+    uint32_t cubemap; // = load_cubemap("img/cubemap%d.png");
+    glGenTextures(1, &cubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
+            octree_draw(in.root, cubemap);
             draw_cubemap(cubemap);
-            octree_draw(in.root);
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

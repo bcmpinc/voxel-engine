@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <algorithm>
+#include <GL/gl.h>
 
 #include "art.h"
 #include "events.h"
@@ -139,57 +140,17 @@ static void prepare_cubemap() {
     }
 }
 
-static void draw_cubemap() {
-    const int SIZE = Q::SIZE;
-    // The orientation matrix is (asumed to be) orthogonal, and therefore can be inversed by transposition.
-    glm::dmat3 inverse_orientation = glm::transpose(orientation);
-    double fov = 1.0/SCREEN_HEIGHT;
-    // render the faces of the cubemap on screen.
-    for (int y=0; y<SCREEN_HEIGHT; y++) {
-        for (int x=0; x<SCREEN_WIDTH; x++) {
-            glm::dvec3 p( (x-SCREEN_WIDTH/2)*fov, (SCREEN_HEIGHT/2-y)*fov, 1 );
-            p = inverse_orientation * p;
-            double ax=fabs(p.x);
-            double ay=fabs(p.y);
-            double az=fabs(p.z);
-        
-            if (ax>=ay && ax>=az) {
-                if (p.x>0) {
-                    int fx = SIZE*(-p.z/ax/2+0.5);
-                    int fy = SIZE*(p.y/ax/2+0.5);
-                    //pix(x, y, cubemap[2].face[fx+fy*SIZE]);
-                } else {
-                    int fx = SIZE*(p.z/ax/2+0.5);
-                    int fy = SIZE*(p.y/ax/2+0.5);
-                    //pix(x, y, cubemap[4].face[fx+fy*SIZE]);
-                }
-            } else if (ay>=ax && ay>=az) {
-                if (p.y>0) {
-                    int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(-p.z/ay/2+0.5);
-                    //pix(x, y, cubemap[0].face[fx+fy*SIZE]);
-                } else {
-                    int fx = SIZE*(p.x/ay/2+0.5);
-                    int fy = SIZE*(p.z/ay/2+0.5);
-                    //pix(x, y, cubemap[5].face[fx+fy*SIZE]);
-                }
-            } else if (az>=ax && az>=ay) {
-                if (p.z>0) {
-                    int fx = SIZE*(p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    //pix(x, y, cubemap[1].face[fx+fy*SIZE]);
-                } else {
-                    int fx = SIZE*(-p.x/az/2+0.5);
-                    int fy = SIZE*(p.y/az/2+0.5);
-                    //pix(x, y, cubemap[3].face[fx+fy*SIZE]);
-                }
-            }
-        }
-    }
-}
+static GLuint cubetargets[6] = {
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+    GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+    GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+};
 
 /** Draw anything on the screen. */
-void octree_draw(octree* root) {
+void octree_draw(octree* root, uint32_t cubemap_texture) {
     int x = position.x;
     int y = position.y;
     int z = position.z;
@@ -198,6 +159,7 @@ void octree_draw(octree* root) {
     Timer t0;
     for(int i=0; i<6; i++) {
         //memcpy(cubemap[i].face,cubepixs[i],sizeof(cubemap[i].face));
+        memset(cubemap[i].face,0xc0,sizeof(cubemap[i].face));
     }
     double d0 = t0.elapsed();
     
@@ -253,12 +215,11 @@ void octree_draw(octree* root) {
     double d2 = t2.elapsed();
 
     Timer t3;
-    draw_cubemap();
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture);
+    for (int i=0; i<6; i++) {
+        glTexImage2D( cubetargets[i], 0, 4, Q::SIZE, Q::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, cubemap[i].face);
+    }
     double d3 = t3.elapsed();
-    
-    Timer t4;
-    draw_box();
-    double d4 = t4.elapsed();
     
     printf("%6.2f | C%6.2f P%6.2f Q%6.2f R%6.2f B%6.2f\n", t0.elapsed(), d0,d1,d2,d3,d4);
 }
