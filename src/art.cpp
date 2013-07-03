@@ -22,6 +22,10 @@ using glm::max;
 namespace {
     // The screen surface
     SDL_Surface *screen = NULL;
+    /** The projection matrix.
+     * Note that we use a left handed axis system, hence we are initially looking down the positive Z-axis.
+     * Up is positive Y and right is positive X.
+     */
     const glm::dmat4 frustum_matrix = glm::scale(glm::frustum<double>(frustum::left, frustum::right, frustum::bottom, frustum::top, frustum::near, frustum::far),glm::dvec3(1,1,-1));
 }
 
@@ -100,6 +104,9 @@ void draw_box() {
             int c = a^b;
             glm::dvec3 va = vertices[a];
             glm::dvec3 vb = vertices[b];
+            
+            // Note that OpenGL expects the color in BGRA order, which is 
+            // written as 0xaarrggbb on a little-endian system, such as x86 and x86-64.
             switch(c) {
                 case 1:
                 case 2:
@@ -107,17 +114,17 @@ void draw_box() {
                     box_color[i]=0x000000; box_vert[i]=va; i++;
                     box_color[i]=0x000000; box_vert[i]=vb; i++;
                     break;
-                case 3:
-                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=va; i++;
-                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=vb; i++;
+                case 3: // Z: blue
+                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=va; i++;
+                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=vb; i++;
                     break;
-                case 5:
+                case 5: // Y: green
                     box_color[i]=0x00fe00>>!(a&b); box_vert[i]=va; i++;
                     box_color[i]=0x00fe00>>!(a&b); box_vert[i]=vb; i++;
                     break;
-                case 6:
-                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=va; i++;
-                    box_color[i]=0xfe0000>>!(a&b); box_vert[i]=vb; i++;
+                case 6: // X: red
+                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=va; i++;
+                    box_color[i]=0x0000fe>>!(a&b); box_vert[i]=vb; i++;
                     break;
             }
         }

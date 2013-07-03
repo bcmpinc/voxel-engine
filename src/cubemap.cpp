@@ -5,7 +5,10 @@
 #include <algorithm>
 #include <SDL.h>
 #include <SDL_image.h>
+
+#define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
+#include <GL/glext.h>
 
 #include "timing.h"
 #include "events.h"
