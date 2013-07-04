@@ -15,10 +15,12 @@ struct octree_file {
     octree * root;
     octree_file(const char * filename);
     octree_file(const char * filename, uint32_t size);
+    octree_file(octree_file &) = delete;
+    octree_file& operator=(octree_file&) = delete;
     ~octree_file();
 };
 
-void octree_draw(octree* root, uint32_t cubemap_texture);
+void octree_draw(octree_file* file, uint32_t cubemap_texture);
 
 static const uint32_t OCTREE_DEPTH = 20;
 static const uint32_t SCENE_SIZE = 1 << OCTREE_DEPTH;

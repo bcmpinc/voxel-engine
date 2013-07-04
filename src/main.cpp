@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     while (!quit) {
         Timer t;
         if (moves) {
-            octree_draw(in.root, cubemap);
+            octree_draw(&in, cubemap);
             draw_cubemap(cubemap);
             flip_screen();
             
