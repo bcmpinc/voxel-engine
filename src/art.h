@@ -21,7 +21,7 @@ namespace frustum {
     const int right  =  SCREEN_WIDTH/2;
     const int top    =  SCREEN_HEIGHT/2;
     const int bottom = -SCREEN_HEIGHT/2;
-    const int near   =  SCREEN_HEIGHT/2; // I.e. 90 degree FOV.
+    const int near   =  SCREEN_HEIGHT; // I.e. 90 degree FOV.
     const int cubepos=  SCREEN_WIDTH; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
     const int far    =  SCREEN_WIDTH * 2; // > sqrt(3)*cubepos 
     const int slack  =  0;
