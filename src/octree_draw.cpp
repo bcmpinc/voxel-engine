@@ -1,5 +1,5 @@
 /*
-    Voxel - A CPU based sparse octree renderer.
+    Voxel-Engine - A CPU based sparse octree renderer.
     Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
