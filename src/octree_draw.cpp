@@ -221,7 +221,7 @@ void octree_draw(octree* root, uint32_t cubemap_texture) {
     }
     double d3 = t3.elapsed();
     
-    printf("%6.2f | C%6.2f P%6.2f Q%6.2f R%6.2f B%6.2f\n", t0.elapsed(), d0,d1,d2,d3,d4);
+    printf("%6.2f | C%6.2f P%6.2f Q%6.2f R%6.2f\n", t0.elapsed(), d0,d1,d2,d3);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
