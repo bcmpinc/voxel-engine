@@ -23,7 +23,10 @@ struct quadtree {
      * The quadtree is stored in a heap-like fashion as a single array.
      * The child nodes of map[i] are map[4*i+1], ..., map[4*i+4].
      */
-    char map[N];
+    union {
+        uint8_t  map[N];
+        uint32_t children[N/4];
+    };
     uint32_t face[SIZE*SIZE];
     
     /**
@@ -64,7 +67,7 @@ struct quadtree {
      * Sets given node to 1 if one of its children is nonzero. 
      */
     void compute(type i) {
-        if (((int32_t*)map)[i+1]==0) map[i] = 0;
+        if (children[i+1]==0) map[i] = 0;
     }
     
     void build_fill(type i) {
