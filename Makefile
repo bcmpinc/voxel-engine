@@ -10,7 +10,7 @@ else
 endif
 CXXFLAGS=-std=gnu++0x -Wall -Ofast -Wno-unused-result -march=native -flto -g
 #CXXFLAGS=-std=gnu++0x -Wall -O2 -g -Wno-unused-result
-#CXXFLAGS=-std=gnu++0x -Wall -O0 -g -Wno-unused-result
+#CXXFLAGS=-std=gnu++0x -Wall -O1 -g -Wno-unused-result
 LDFLAGS=-fwhole-program -fuse-linker-plugin
 
 # Deafult rule patterns

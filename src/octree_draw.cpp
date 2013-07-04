@@ -27,72 +27,75 @@ struct SubFaceRenderer {
      */
     static bool traverse(
         unsigned int r, uint32_t index, uint32_t color,
-        int x1, int x2, int x1p, int x2p, 
-        int y1, int y2, int y1p, int y2p
+        int x,  int y,  int d,
+        int xp, int yp, int dp
     ){
         // occlusion
-        if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return false;
-        if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return false;
+        if (x+d-(1-DX)*(xp+dp)<=-ONE || ONE<=x-(1+DX)*xp) return false;
+        if (y+d-(1-DY)*(yp+dp)<=-ONE || ONE<=y-(1+DY)*yp) return false;
         
         // Recursion
-        if (x2-x1 <= 2*ONE && y2-y1 <= 2*ONE) {
+        if (d <= 2*ONE) {
             // Traverse octree
-            // x4 y2 z1
-            int x3 = x1-x1p;
-            int x4 = x2-x2p;
-            int y3 = y1-y1p;
-            int y4 = y2-y2p;
+            int xn = (x-xp)*2; // x3, x4=xn+dn
+            int yn = (y-yp)*2; 
+            int dn = (d-dp)*2;
+            x*=2;
+            y*=2;
+            d*=2;
             if (~index) {
                 octree &s = root[index];
-                if (x3<x4 && y3<y4) {
-                    if (s.avgcolor[C         ]>=0 && traverse(r, s.child[C         ], s.avgcolor[C         ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
-                    if (s.avgcolor[C^AX      ]>=0 && traverse(r, s.child[C^AX      ], s.avgcolor[C^AX      ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
-                    if (s.avgcolor[C   ^AY   ]>=0 && traverse(r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
-                    if (s.avgcolor[C^AX^AY   ]>=0 && traverse(r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
+                if (dn>0) {
+                    if (s.avgcolor[C         ]>=0 && traverse(r, s.child[C         ], s.avgcolor[C         ], xn+DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (s.avgcolor[C^AX      ]>=0 && traverse(r, s.child[C^AX      ], s.avgcolor[C^AX      ], xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (s.avgcolor[C   ^AY   ]>=0 && traverse(r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (s.avgcolor[C^AX^AY   ]>=0 && traverse(r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
                 }
-                if (s.avgcolor[C      ^AZ]>=0 && traverse(r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
-                if (s.avgcolor[C^AX   ^AZ]>=0 && traverse(r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
-                if (s.avgcolor[C   ^AY^AZ]>=0 && traverse(r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
-                if (s.avgcolor[C^AX^AY^AZ]>=0 && traverse(r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
+                if (s.avgcolor[C      ^AZ]>=0 && traverse(r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (s.avgcolor[C^AX   ^AZ]>=0 && traverse(r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (s.avgcolor[C   ^AY^AZ]>=0 && traverse(r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (s.avgcolor[C^AX^AY^AZ]>=0 && traverse(r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
             } else {
-                if (x3<x4 && y3<y4) {
+                if (dn>0) {
                     // Skip nearest cube to avoid infinite recursion.
-                    if (traverse(r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3+DY*ONE,2*y4+DY*ONE,y1p,y2p)) return true;
-                    if (traverse(r, ~0u, color, 2*x3+DX*ONE,2*x4+DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
-                    if (traverse(r, ~0u, color, 2*x3-DX*ONE,2*x4-DX*ONE,x1p,x2p, 2*y3-DY*ONE,2*y4-DY*ONE,y1p,y2p)) return true;
+                    if (traverse(r, ~0u, color, xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (traverse(r, ~0u, color, xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (traverse(r, ~0u, color, xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
                 }
-                if (traverse(r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
-                if (traverse(r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1+DY*ONE,2*y2+DY*ONE,y1p,y2p)) return true;
-                if (traverse(r, ~0u, color, 2*x1+DX*ONE,2*x2+DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
-                if (traverse(r, ~0u, color, 2*x1-DX*ONE,2*x2-DX*ONE,x1p,x2p, 2*y1-DY*ONE,2*y2-DY*ONE,y1p,y2p)) return true;
+                if (traverse(r, ~0u, color, x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (traverse(r, ~0u, color, x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (traverse(r, ~0u, color, x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (traverse(r, ~0u, color, x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
             }
             return false;
         } else {
-            int xm  = (x1 +x2 )/2; 
-            int xmp = (x1p+x2p)/2; 
-            int ym  = (y1 +y2 )/2; 
-            int ymp = (y1p+y2p)/2; 
+            d/=2;
+            dp/=2;
+            int xm  = x  + d; 
+            int xmp = xp + dp; 
+            int ym  = y  + d; 
+            int ymp = yp + dp; 
             if (r<Q::L) {
                 // Traverse quadtree 
-                if (face.map[r*4+4]) traverse(r*4+4, index, color, x1, xm, x1p, xmp, y1, ym, y1p, ymp); 
-                if (face.map[r*4+5]) traverse(r*4+5, index, color, xm, x2, xmp, x2p, y1, ym, y1p, ymp); 
-                if (face.map[r*4+6]) traverse(r*4+6, index, color, x1, xm, x1p, xmp, ym, y2, ymp, y2p); 
-                if (face.map[r*4+7]) traverse(r*4+7, index, color, xm, x2, xmp, x2p, ym, y2, ymp, y2p); 
+                if (face.map[r*4+4]) traverse(r*4+4, index, color, x,  y,  d, xp,  yp,  dp); 
+                if (face.map[r*4+5]) traverse(r*4+5, index, color, xm, y,  d, xmp, yp,  dp); 
+                if (face.map[r*4+6]) traverse(r*4+6, index, color, x,  ym, d, xp,  ymp, dp); 
+                if (face.map[r*4+7]) traverse(r*4+7, index, color, xm, ym, d, xmp, ymp, dp); 
             } else {
                 // Rendering
-                if (face.map[r*4+4]) paint(r*4+4, color, x1, xm, x1p, xmp, y1, ym, y1p, ymp); 
-                if (face.map[r*4+5]) paint(r*4+5, color, xm, x2, xmp, x2p, y1, ym, y1p, ymp); 
-                if (face.map[r*4+6]) paint(r*4+6, color, x1, xm, x1p, xmp, ym, y2, ymp, y2p); 
-                if (face.map[r*4+7]) paint(r*4+7, color, xm, x2, xmp, x2p, ym, y2, ymp, y2p); 
+                if (face.map[r*4+4]) paint(r*4+4, color, x,  y,  d, xp,  yp,  dp); 
+                if (face.map[r*4+5]) paint(r*4+5, color, xm, y,  d, xmp, yp,  dp); 
+                if (face.map[r*4+6]) paint(r*4+6, color, x,  ym, d, xp,  ymp, dp); 
+                if (face.map[r*4+7]) paint(r*4+7, color, xm, ym, d, xmp, ymp, dp); 
             }
             face.compute(r);
             return !face.map[r];
         }
     }
     
-    static inline void paint(unsigned int r, int color, int x1, int x2, int x1p, int x2p, int y1, int y2, int y1p, int y2p)  {
-        if (x2-(1-DX)*x2p<=-ONE || ONE<=x1-(1+DX)*x1p) return;
-        if (y2-(1-DY)*y2p<=-ONE || ONE<=y1-(1+DY)*y1p) return;
+    static inline void paint(unsigned int r, int color, int x, int y, int d, int xp, int yp, int dp)  {
+        if (x+d-(1-DX)*(xp+dp)<=-ONE || ONE<=x-(1+DX)*xp) return;
+        if (y+d-(1-DY)*(yp+dp)<=-ONE || ONE<=y-(1+DY)*yp) return;
         face.set_face(r, color); 
         face.map[r] = 0;
     }
@@ -113,10 +116,11 @@ struct FaceRenderer {
      * The value Q is the distance between the eye and the side of the octree corresponding to the face being rendered to.
      */
     static void render(int x, int y, int Q) {
-        if (face.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(0, 0, 0, x-Q, x,-ONE, 0, y-Q, y,-ONE, 0);
-        if (face.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(1, 0, 0, x, x+Q, 0, ONE, y-Q, y,-ONE, 0);
-        if (face.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(2, 0, 0, x-Q, x,-ONE, 0, y, y+Q, 0, ONE);
-        if (face.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(3, 0, 0, x, x+Q, 0, ONE, y, y+Q, 0, ONE);
+        //                                                                          x    y    d  xp    yp    dp
+        if (face.map[0]) SubFaceRenderer<-1,-1,C^AX^AY,AX,AY,AZ>::traverse(0, 0, 0, x-Q, y-Q, Q, -ONE, -ONE, ONE);
+        if (face.map[1]) SubFaceRenderer< 1,-1,C   ^AY,AX,AY,AZ>::traverse(1, 0, 0, x,   y-Q, Q, 0,    -ONE, ONE);
+        if (face.map[2]) SubFaceRenderer<-1, 1,C^AX   ,AX,AY,AZ>::traverse(2, 0, 0, x-Q, y,   Q, -ONE, 0,    ONE);
+        if (face.map[3]) SubFaceRenderer< 1, 1,C      ,AX,AY,AZ>::traverse(3, 0, 0, x,   y,   Q, 0,    0,    ONE);
     }
 };
 
