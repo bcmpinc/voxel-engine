@@ -1,6 +1,6 @@
 /*
-    <one line to give the program's name and a brief idea of what it does.>
-    Copyright (C) 2012  Bauke Conijn <email>
+    Voxel - A CPU based sparse octree renderer.
+    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    aint64_t with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 
 #ifndef TIMING_H
 #define TIMING_H
