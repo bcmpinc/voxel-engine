@@ -11,7 +11,7 @@ octree_file::octree_file(const char* filename) : write(false) {
     if (fd == -1) {perror("Could not open file"); exit(1);}
     size = lseek(fd, 0, SEEK_END);
     assert(size % sizeof(octree) == 0);
-    root = (octree*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    root = (octree*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (root == MAP_FAILED) {perror("Could not map file to memory"); exit(1);} 
 }
 
