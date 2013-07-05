@@ -24,11 +24,14 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <GL/gl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "timing.h"
 #include "events.h"
 #include "art.h"
 #include "octree.h"
+#include "capture.h"
 
 using namespace std;
 
@@ -52,6 +55,11 @@ int main(int argc, char *argv[]) {
     
     uint32_t cubemap = prepare_cubemap(); // = load_cubemap("img/cubemap%d.png");
     
+    char capturefile[32];
+    mkdir("capture",0755);
+    sprintf(capturefile, "capture/cap%08d.mp4", getpid());
+    capture_start(capturefile);
+    
     // mainloop
     while (!quit) {
         Timer t;
@@ -59,6 +67,7 @@ int main(int argc, char *argv[]) {
             octree_draw(&in, cubemap);
             draw_cubemap(cubemap);
             flip_screen();
+            capture_shoot(cubemap);
             
             glm::dvec3 eye(orientation[2]);
             //printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
@@ -69,6 +78,7 @@ int main(int argc, char *argv[]) {
         handle_events();
     }
     
+    capture_end();
     return 0;
 }
 
