@@ -32,8 +32,7 @@ using std::max;
 using std::min;
 
 namespace {
-    typedef quadtree<10> Q;
-    Q face;
+    quadtree face;
     octree * root;
 }
 
@@ -95,7 +94,7 @@ struct SubFaceRenderer {
             int xmp = xp + dp; 
             int ym  = y  + d; 
             int ymp = yp + dp; 
-            if (r<Q::L) {
+            if (r<quadtree::L) {
                 // Traverse quadtree 
                 if (face.map[r*4+4]) traverse(r*4+4, index, color, x,  y,  d, xp,  yp,  dp); 
                 if (face.map[r*4+5]) traverse(r*4+5, index, color, xm, y,  d, xmp, yp,  dp); 
@@ -166,7 +165,7 @@ uint32_t prepare_cubemap() {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     for (int i=0; i<6; i++) {
-        glTexImage2D( cubetargets[i], 0, 4, Q::SIZE, Q::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
+        glTexImage2D( cubetargets[i], 0, 4, quadtree::SIZE, quadtree::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
     }
     return id;
 };
@@ -239,7 +238,7 @@ void octree_draw(octree_file * file, uint32_t cubemap_texture) {
         Timer t_query;
         
         // Clear the previous data from the face.
-        memset(face.face,0xc0,sizeof(face.face));
+        face.clear_face();
         
         // Do the actual rendering of the scene to the face (i.e. execute the query).
         proxy[i].render(proxy[i].x, proxy[i].y, proxy[i].Q);
@@ -249,7 +248,7 @@ void octree_draw(octree_file * file, uint32_t cubemap_texture) {
         Timer t_transfer;
         
         // Send the image data to OpenGL.
-        glTexImage2D( cubetargets[i], 0, 4, Q::SIZE, Q::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
+        glTexImage2D( cubetargets[i], 0, 4, quadtree::SIZE, quadtree::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
         
         timer_transfer += t_transfer.elapsed();
         

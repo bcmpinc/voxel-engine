@@ -8,9 +8,9 @@ else
   CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
   LDLIBS=-lSDL -lSDL_image -lrt -lGL
 endif
-CXXFLAGS=-Wall -Ofast -Wno-unused-result -march=native -flto -g
+#CXXFLAGS=-Wall -Ofast -Wno-unused-result -march=native -flto -g
 #CXXFLAGS=-Wall -O2 -g -Wno-unused-result
-#CXXFLAGS=-Wall -O1 -g -Wno-unused-result
+CXXFLAGS=-Wall -O0 -g -Wno-unused-result
 LDFLAGS=-fwhole-program -fuse-linker-plugin
 
 # Deafult rule patterns
@@ -40,7 +40,7 @@ $(1): $(addprefix build/,$(addsuffix .o,$(2)))
 endef
 
 # Target definitions
-$(eval $(call target,voxel,main events art timing pointset octree_file octree_draw))
+$(eval $(call target,voxel,main events art timing pointset octree_file octree_draw quadtree))
 $(eval $(call target,convert,convert))
 $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
