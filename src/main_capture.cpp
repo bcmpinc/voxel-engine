@@ -24,11 +24,14 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <GL/gl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "timing.h"
 #include "events.h"
 #include "art.h"
 #include "octree.h"
+#include "capture.h"
 
 using namespace std;
 
@@ -47,10 +50,15 @@ int main(int argc, char *argv[]) {
     sprintf(infile, "vxl/%s.oct", name);
     octree_file in(infile);
 
-    init_screen("Voxel renderer");
+    init_screen("Voxel capture renderer");
     position = glm::dvec3(0, -1000000, 0);
     
     uint32_t cubemap = prepare_cubemap();
+    
+    char capturefile[32];
+    mkdir("capture",0755);
+    sprintf(capturefile, "capture/cap%08d.mp4", getpid());
+    capture_start(capturefile);
     
     // mainloop
     while (!quit) {
@@ -59,6 +67,7 @@ int main(int argc, char *argv[]) {
             octree_draw(&in, cubemap);
             draw_cubemap(cubemap);
             flip_screen();
+            capture_shoot(cubemap);
             
             glm::dvec3 eye(orientation[2]);
             //printf("%6.2f | %lf %lf %lf | %.3lf %.3lf %.3lf \n", t.elapsed(), 
@@ -69,6 +78,7 @@ int main(int argc, char *argv[]) {
         handle_events();
     }
     
+    capture_end();
     return 0;
 }
 

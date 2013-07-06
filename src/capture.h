@@ -19,7 +19,7 @@
 
 #ifndef CAPTURE_H
 #define CAPTURE_H
-#include <cstdint>
+#include <stdint.h>
 
 void capture_start(const char * filename);
 void capture_shoot(uint32_t cubemap);
