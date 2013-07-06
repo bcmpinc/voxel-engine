@@ -5,9 +5,10 @@ all:;
 ifeq ($(OS),Windows_NT)
   LDLIBS=-lmingw32 -lSDLmain -lSDL
 else
-  CPPFLAGS=-I/usr/include/SDL -D_GNU_SOURCE=1 -D_REENTRANT
+  CPPFLAGS=-D_GNU_SOURCE=1 -D_REENTRANT
   LDLIBS=-lSDL -lSDL_image -lrt -lGL
 endif
+
 #CXXFLAGS=-Wall -Ofast -Wno-unused-result -march=native -flto -g
 #CXXFLAGS=-Wall -O2 -g -Wno-unused-result
 CXXFLAGS=-Wall -O0 -g -Wno-unused-result
