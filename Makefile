@@ -7,6 +7,7 @@ ifeq ($(OS),Windows_NT)
 else
   CPPFLAGS=-D_GNU_SOURCE=1 -D_REENTRANT
   LDLIBS=-lSDL -lSDL_image -lrt -lGL
+  LDLIBS+=-lavcodec -lavformat -lavutil -lswscale
 endif
 
 #CXXFLAGS=-Wall -Ofast -Wno-unused-result -march=native -flto -g
