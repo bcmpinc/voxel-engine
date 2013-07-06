@@ -26,6 +26,8 @@
 #include "timing.h"
 #include "octree.h"
 
+#define static_assert(test, message) typedef char static_assert__##message[(test)?1:-1]
+
 using std::max;
 using std::min;
 
@@ -37,8 +39,8 @@ namespace {
 
 template<int DX, int DY, int C, int AX, int AY, int AZ>
 struct SubFaceRenderer {
-    static_assert(DX==1 || DX==-1, "Wrong DX");
-    static_assert(DY==1 || DY==-1, "Wrong DY");
+    static_assert(DX==1 || DX==-1, Wrong_DX);
+    static_assert(DY==1 || DY==-1, Wrong_DY);
     static const int ONE = SCENE_SIZE;
     /** Returns true if quadtree node is rendered 
      * Function is assumed to be called only if quadtree node is not yet fully rendered.
@@ -121,10 +123,10 @@ struct SubFaceRenderer {
 
 template<int C, int AX, int AY, int AZ>
 struct FaceRenderer {
-    static_assert(0<=C && C<8, "Invalid C");
-    static_assert(AX==1 || AY==1 || AZ==1, "No z-axis.");
-    static_assert(AX==2 || AY==2 || AZ==2, "No y-axis.");
-    static_assert(AX==4 || AY==4 || AZ==4, "No x-axis.");
+    static_assert(0<=C && C<8, Invalid_C);
+    static_assert(AX==1 || AY==1 || AZ==1, No_Z_axis);
+    static_assert(AX==2 || AY==2 || AZ==2, No_Y_axis);
+    static_assert(AX==4 || AY==4 || AZ==4, No_X_axis);
     static const int ONE = SCENE_SIZE;
     
     /**

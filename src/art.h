@@ -18,7 +18,7 @@
 
 #ifndef ART_H
 #define ART_H
-#include <cstdint>
+#include <stdint.h>
 #include <glm/glm.hpp>
 
 #define SCREEN_WIDTH    1024

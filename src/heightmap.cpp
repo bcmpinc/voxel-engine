@@ -22,6 +22,7 @@
 #include <SDL_image.h>
 #include <unistd.h>
 #include "pointset.h"
+#include "errno.h"
 
 SDL_PixelFormat fmt = {
   NULL,

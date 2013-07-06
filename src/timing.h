@@ -21,16 +21,14 @@
 
 struct TimerData;
 struct Timer {
-    
     /** Starts the time counter. */
     Timer();
     ~Timer();
-    Timer(const Timer&) = delete;
     
     /** Return time elapsed since last reset in millseconds. */
     double elapsed();
-    
 private:
+    Timer(const Timer&);
     TimerData * data;
 };
 

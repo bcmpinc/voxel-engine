@@ -18,7 +18,7 @@
 
 #ifndef OCTREE_H
 #define OCTREE_H
-#include <cstdint>
+#include <stdint.h>
 
 /** A node in an octree. 
  *
@@ -43,9 +43,10 @@ struct octree_file {
     octree * root;
     octree_file(const char * filename);
     octree_file(const char * filename, uint32_t size);
-    octree_file(octree_file &) = delete;
-    octree_file& operator=(octree_file&) = delete;
     ~octree_file();
+private:
+    octree_file(octree_file &);
+    octree_file& operator=(octree_file&);
 };
 
 void octree_draw(octree_file* file, uint32_t cubemap_texture);

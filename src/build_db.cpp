@@ -18,13 +18,13 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstdint>
 #include <cstring>
 #include <cassert>
 #include <algorithm>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #include "pointset.h"
 #include "timing.h"
@@ -35,14 +35,14 @@
  */
 static const int D = 21;
 
-static constexpr uint64_t B[] = {
+static const uint64_t B[] = {
   0xFFFF00000000FFFF, 
   0x00FF0000FF0000FF, 
   0xF00F00F00F00F00F, 
   0x30C30C30C30C30C3, 
   0x9249249249249249,
 };
-static constexpr uint64_t S[] = {32, 16, 8, 4, 2};
+static const uint64_t S[] = {32, 16, 8, 4, 2};
     
 uint64_t morton3d( uint64_t x, uint64_t y, uint64_t z ) {   
   // pack 3 32-bit indices into a 96-bit Morton code

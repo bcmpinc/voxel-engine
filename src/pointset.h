@@ -18,7 +18,7 @@
 
 #ifndef POINTSET_H
 #define POINTSET_H
-#include <cstdint>
+#include <stdint.h>
 
 struct point {
     uint32_t x,y,z,c;

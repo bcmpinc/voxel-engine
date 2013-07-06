@@ -18,14 +18,14 @@
 
 #ifndef VOXEL_QUADTREE_H
 #define VOXEL_QUADTREE_H
-#include <cstdint>
+#include <stdint.h>
 #include <cstring>
 #include <glm/glm.hpp>
 
 namespace quadtree_internal {
     typedef int_fast32_t type;
-    static constexpr type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
-    static constexpr type S[] = {8, 4, 2, 1};
+    static const type B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
+    static const type S[] = {8, 4, 2, 1};
 }
 
 template <unsigned int dim>
