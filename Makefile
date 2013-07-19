@@ -2,7 +2,7 @@
 all:;
 
 # Set to yes for optimization.
-OPTIMIZATION:=no
+OPTIMIZATION:=yes
 
 # Compile flags
 ifeq "$(OS)" "Windows_NT"
