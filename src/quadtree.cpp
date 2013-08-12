@@ -35,6 +35,7 @@ void quadtree::set(int x, int y) {
 }
 
 void quadtree::set_face(int v, int color) {
+    map[v] = 0;
     v -= M;
     int x = v;
     int y = v>>1;

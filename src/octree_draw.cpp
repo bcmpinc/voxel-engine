@@ -102,19 +102,14 @@ struct SubFaceRenderer {
                 if (face.map[r*4+7] && ONE>xm-(1+DX)*xmp  && ONE>ym-(1+DY)*ymp ) traverse(r*4+7, index, color, xm, ym, d, xmp, ymp, dp); 
             } else {
                 // Rendering
-                if (face.map[r*4+4] && xm-(1-DX)*xmp>-ONE && ym-(1-DY)*ymp>-ONE) paint(r*4+4, color, x,  y,  d, xp,  yp,  dp); 
-                if (face.map[r*4+5] && ONE>xm-(1+DX)*xmp  && ym-(1-DY)*ymp>-ONE) paint(r*4+5, color, xm, y,  d, xmp, yp,  dp); 
-                if (face.map[r*4+6] && xm-(1-DX)*xmp>-ONE && ONE>ym-(1+DY)*ymp ) paint(r*4+6, color, x,  ym, d, xp,  ymp, dp); 
-                if (face.map[r*4+7] && ONE>xm-(1+DX)*xmp  && ONE>ym-(1+DY)*ymp ) paint(r*4+7, color, xm, ym, d, xmp, ymp, dp); 
+                if (face.map[r*4+4] && xm-(1-DX)*xmp>-ONE && ym-(1-DY)*ymp>-ONE) face.set_face(r*4+4, color); 
+                if (face.map[r*4+5] && ONE>xm-(1+DX)*xmp  && ym-(1-DY)*ymp>-ONE) face.set_face(r*4+5, color); 
+                if (face.map[r*4+6] && xm-(1-DX)*xmp>-ONE && ONE>ym-(1+DY)*ymp ) face.set_face(r*4+6, color); 
+                if (face.map[r*4+7] && ONE>xm-(1+DX)*xmp  && ONE>ym-(1+DY)*ymp ) face.set_face(r*4+7, color); 
             }
             face.compute(r);
             return !face.map[r];
         }
-    }
-    
-    static inline void paint(unsigned int r, int color, int x, int y, int d, int xp, int yp, int dp)  {
-        face.set_face(r, color); 
-        face.map[r] = 0;
     }
 };
 
