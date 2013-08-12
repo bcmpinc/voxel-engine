@@ -96,16 +96,16 @@ struct SubFaceRenderer {
             int ymp = yp + dp; 
             if (r<quadtree::L) {
                 // Traverse quadtree 
-                if (face.map[r*4+4]) traverse(r*4+4, index, color, x,  y,  d, xp,  yp,  dp); 
-                if (face.map[r*4+5]) traverse(r*4+5, index, color, xm, y,  d, xmp, yp,  dp); 
-                if (face.map[r*4+6]) traverse(r*4+6, index, color, x,  ym, d, xp,  ymp, dp); 
-                if (face.map[r*4+7]) traverse(r*4+7, index, color, xm, ym, d, xmp, ymp, dp); 
+                if (face.map[r*4+4] && xm-(1-DX)*xmp>-ONE && ym-(1-DY)*ymp>-ONE) traverse(r*4+4, index, color, x,  y,  d, xp,  yp,  dp); 
+                if (face.map[r*4+5] && ONE>xm-(1+DX)*xmp  && ym-(1-DY)*ymp>-ONE) traverse(r*4+5, index, color, xm, y,  d, xmp, yp,  dp); 
+                if (face.map[r*4+6] && xm-(1-DX)*xmp>-ONE && ONE>ym-(1+DY)*ymp ) traverse(r*4+6, index, color, x,  ym, d, xp,  ymp, dp); 
+                if (face.map[r*4+7] && ONE>xm-(1+DX)*xmp  && ONE>ym-(1+DY)*ymp ) traverse(r*4+7, index, color, xm, ym, d, xmp, ymp, dp); 
             } else {
                 // Rendering
-                if (face.map[r*4+4]) paint(r*4+4, color, x,  y,  d, xp,  yp,  dp); 
-                if (face.map[r*4+5]) paint(r*4+5, color, xm, y,  d, xmp, yp,  dp); 
-                if (face.map[r*4+6]) paint(r*4+6, color, x,  ym, d, xp,  ymp, dp); 
-                if (face.map[r*4+7]) paint(r*4+7, color, xm, ym, d, xmp, ymp, dp); 
+                if (face.map[r*4+4] && xm-(1-DX)*xmp>-ONE && ym-(1-DY)*ymp>-ONE) paint(r*4+4, color, x,  y,  d, xp,  yp,  dp); 
+                if (face.map[r*4+5] && ONE>xm-(1+DX)*xmp  && ym-(1-DY)*ymp>-ONE) paint(r*4+5, color, xm, y,  d, xmp, yp,  dp); 
+                if (face.map[r*4+6] && xm-(1-DX)*xmp>-ONE && ONE>ym-(1+DY)*ymp ) paint(r*4+6, color, x,  ym, d, xp,  ymp, dp); 
+                if (face.map[r*4+7] && ONE>xm-(1+DX)*xmp  && ONE>ym-(1+DY)*ymp ) paint(r*4+7, color, xm, ym, d, xmp, ymp, dp); 
             }
             face.compute(r);
             return !face.map[r];
@@ -113,8 +113,6 @@ struct SubFaceRenderer {
     }
     
     static inline void paint(unsigned int r, int color, int x, int y, int d, int xp, int yp, int dp)  {
-        if (x+d-(1-DX)*(xp+dp)<=-ONE || ONE<=x-(1+DX)*xp) return;
-        if (y+d-(1-DY)*(yp+dp)<=-ONE || ONE<=y-(1+DY)*yp) return;
         face.set_face(r, color); 
         face.map[r] = 0;
     }

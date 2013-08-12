@@ -66,7 +66,7 @@ void init_screen(const char * caption) {
     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
     // TODO: include SDL_RESIZABLE flag
-    screen = SDL_SetVideoMode (SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_OPENGL);
+    screen = SDL_SetVideoMode (SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_OPENGL | (SCREEN_FULLSCREEN*SDL_FULLSCREEN));
     if (screen == NULL) {
         fprintf (stderr, "Couldn't set video mode: %s\n", SDL_GetError ());
         exit (3);
