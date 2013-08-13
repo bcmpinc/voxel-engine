@@ -36,6 +36,57 @@ namespace {
     octree * root;
 }
 
+template<int D>
+struct occlusion {
+    static_assert(D==1 || D==-1, Wrong_D);
+    static const int ONE = SCENE_SIZE;
+    bool t1,t2,t3,t4;
+    occlusion(int v, int vp, int d, int dp);
+};
+
+template<>
+occlusion<1>::occlusion(int v, int vp, int d, int dp) : t1(true),t2(true),t3(true),t4(true) {
+    if (0 <= v-vp) {
+        t3=false;
+        if (0 <= v-2*vp) {
+            t1=false;
+            if (ONE <= v-vp) {
+                t4=false; 
+            }
+        } 
+    } else if (v-vp+d-dp <= 0) {
+        t2=false;
+        if (v+d <= 0) {
+            t4=false;
+            if (v-vp+d-dp <= -ONE) {
+                t1=false;
+            }
+        }
+    }        
+}
+
+template<>
+occlusion<-1>::occlusion(int v, int vp, int d, int dp) : t1(true),t2(true),t3(true),t4(true) {
+    if (v-vp+d-dp <= 0) {
+        t3=false;
+        if (v+d-2*(vp+dp) <= 0) {
+            t1=false;
+            if (v-vp+d-dp <= -ONE) {
+                t4=false; 
+            }
+        } 
+    } else if (0 <= v-vp) {
+        t2=false;
+        if (0 <= v) {
+            t4=false;
+            if (ONE <= v-vp) {
+                t1=false;
+            }
+        }
+    }        
+}
+
+
 template<int DX, int DY, int C, int AX, int AY, int AZ>
 struct SubFaceRenderer {
     static_assert(DX==1 || DX==-1, Wrong_DX);
@@ -50,44 +101,53 @@ struct SubFaceRenderer {
         int xp, int yp, int dp
     ){
         // occlusion
-        if (x+d-(1-DX)*(xp+dp)<=-ONE || ONE<=x-(1+DX)*xp) return false;
-        if (y+d-(1-DY)*(yp+dp)<=-ONE || ONE<=y-(1+DY)*yp) return false;
+        if (x+d-(1-DX)*(xp+dp)<=-ONE || ONE<=x-(1+DX)*xp) abort();
+        if (y+d-(1-DY)*(yp+dp)<=-ONE || ONE<=y-(1+DY)*yp) abort();
         
         // Recursion
         if (d <= 2*ONE) {
             // Traverse octree
+            
+            // occlusion
+            occlusion<DX> occ_x(x,xp,d,dp);
+            occlusion<DY> occ_y(y,yp,d,dp);
+
             int xn = (x-xp)*2; // x3, x4=xn+dn
             int yn = (y-yp)*2; 
             int dn = (d-dp)*2;
             x*=2;
             y*=2;
             d*=2;
+                        
+            // Recursive calls
             if (~index) {
                 octree &s = root[index];
                 if (dn>0) {
-                    if (s.avgcolor[C         ]>=0 && traverse(r, s.child[C         ], s.avgcolor[C         ], xn+DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
-                    if (s.avgcolor[C^AX      ]>=0 && traverse(r, s.child[C^AX      ], s.avgcolor[C^AX      ], xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
-                    if (s.avgcolor[C   ^AY   ]>=0 && traverse(r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
-                    if (s.avgcolor[C^AX^AY   ]>=0 && traverse(r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t1 && occ_y.t1 && s.avgcolor[C         ]>=0 && traverse(r, s.child[C         ], s.avgcolor[C         ], xn+DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t2 && occ_y.t1 && s.avgcolor[C^AX      ]>=0 && traverse(r, s.child[C^AX      ], s.avgcolor[C^AX      ], xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t1 && occ_y.t2 && s.avgcolor[C   ^AY   ]>=0 && traverse(r, s.child[C   ^AY   ], s.avgcolor[C   ^AY   ], xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t2 && occ_y.t2 && s.avgcolor[C^AX^AY   ]>=0 && traverse(r, s.child[C^AX^AY   ], s.avgcolor[C^AX^AY   ], xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
                 }
-                if (s.avgcolor[C      ^AZ]>=0 && traverse(r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
-                if (s.avgcolor[C^AX   ^AZ]>=0 && traverse(r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
-                if (s.avgcolor[C   ^AY^AZ]>=0 && traverse(r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
-                if (s.avgcolor[C^AX^AY^AZ]>=0 && traverse(r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t3 && occ_y.t3 && s.avgcolor[C      ^AZ]>=0 && traverse(r, s.child[C      ^AZ], s.avgcolor[C      ^AZ], x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t4 && occ_y.t3 && s.avgcolor[C^AX   ^AZ]>=0 && traverse(r, s.child[C^AX   ^AZ], s.avgcolor[C^AX   ^AZ], x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t3 && occ_y.t4 && s.avgcolor[C   ^AY^AZ]>=0 && traverse(r, s.child[C   ^AY^AZ], s.avgcolor[C   ^AY^AZ], x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t4 && occ_y.t4 && s.avgcolor[C^AX^AY^AZ]>=0 && traverse(r, s.child[C^AX^AY^AZ], s.avgcolor[C^AX^AY^AZ], x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
             } else {
                 if (dn>0) {
                     // Skip nearest cube to avoid infinite recursion.
-                    if (traverse(r, ~0u, color, xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
-                    if (traverse(r, ~0u, color, xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
-                    if (traverse(r, ~0u, color, xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t2 && occ_y.t1 && traverse(r, ~0u, color, xn-DX*ONE,yn+DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t1 && occ_y.t2 && traverse(r, ~0u, color, xn+DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
+                    if (occ_x.t2 && occ_y.t2 && traverse(r, ~0u, color, xn-DX*ONE,yn-DY*ONE,dn,xp,yp,dp)) return true;
                 }
-                if (traverse(r, ~0u, color, x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
-                if (traverse(r, ~0u, color, x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
-                if (traverse(r, ~0u, color, x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
-                if (traverse(r, ~0u, color, x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t3 && occ_y.t3 && traverse(r, ~0u, color, x+DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t4 && occ_y.t3 && traverse(r, ~0u, color, x-DX*ONE,y+DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t3 && occ_y.t4 && traverse(r, ~0u, color, x+DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
+                if (occ_x.t4 && occ_y.t4 && traverse(r, ~0u, color, x-DX*ONE,y-DY*ONE,d,xp,yp,dp)) return true;
             }
             return false;
         } else {
+            assert((d&1)==0);
+            assert((dp&1)==0);
             d/=2;
             dp/=2;
             int xm  = x  + d; 

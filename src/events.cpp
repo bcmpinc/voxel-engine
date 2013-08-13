@@ -41,7 +41,7 @@ namespace {
 
     // Position
     const double rotatespeed = -0.3, movespeed = 1<<12;  
-    const int MILLISECONDS_PER_FRAME = 50;
+    const int MILLISECONDS_PER_FRAME = 33;
 }
 
 bool quit  = false;
