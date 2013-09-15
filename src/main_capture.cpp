@@ -21,9 +21,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <GL/gl.h>
+#include <cstring>
 #include <unistd.h>
 #include <sys/stat.h>
 

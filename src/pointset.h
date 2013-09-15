@@ -34,11 +34,11 @@ struct point {
  */
 struct pointset {
     bool write;
-    uint32_t size;
-    uint32_t length;
+    uint32_t size; /// Number of bytes in the pointfile.
+    uint32_t length; /// Number of points in the pointfile.
     int32_t fd;
     point * list;
-    pointset(const char* filename, bool write);
+    pointset(const char* filename, bool write=false);
     ~pointset();
     void enable_write(bool flag);
 };
