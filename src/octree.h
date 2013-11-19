@@ -49,7 +49,7 @@ private:
     octree_file& operator=(octree_file&);
 };
 
-void octree_draw(octree_file* file, uint32_t cubemap_texture);
+void octree_draw(octree_file* file);
 
 uint32_t prepare_cubemap();
 

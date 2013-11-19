@@ -9,7 +9,7 @@ ifeq "$(OS)" "Windows_NT"
   LDLIBS=-lmingw32 -lSDLmain -lSDL
 else
   CPPFLAGS=-D_GNU_SOURCE=1 -D_REENTRANT
-  LDLIBS=-lSDL -lSDL_image -lrt -lGL
+  LDLIBS=-lSDL -lSDL_image -lrt
 endif
 
 ifeq "$(OPTIMIZATION)" "yes"
@@ -41,9 +41,11 @@ TESTS :=
 define test
 -include $(addprefix build/,$(addsuffix .test,$(1)))
 TESTS := $(sort $(TESTS) $(1))
+ifneq "$(MAKECMDGOALS)" "clean"
 build/$(1).test: tests/$(1).cpp
 	@mkdir -p build
 	@(($(LINK.cpp) $$^ $(2) -o /dev/null 2> build/$(1).output && echo "TEST_$(1):=yes")|| echo "TEST_$(1):=no") > $$@
+endif
 endef
 
 # System tests
@@ -59,15 +61,15 @@ $(1): $(addprefix build/,$(addsuffix .o,$(2)))
 endef
 
 # Target definitions
-$(eval $(call target,voxel,main events art timing pointset octree_file octree_draw quadtree))
+$(eval $(call target,voxel,main events art_sdl timing pointset octree_file octree_draw quadtree))
 $(eval $(call target,convert,convert))
 $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
 $(eval $(call target,heightmap,heightmap pointset))
 $(eval $(call target,build_db,build_db pointset timing octree_file))
-$(eval $(call target,cubemap,cubemap events art timing))
+$(eval $(call target,cubemap,cubemap events art_gl timing,-lGL))
 ifeq "$(TEST_capture)" "yes"
-$(eval $(call target,voxel_capture,main_capture events art timing pointset octree_file octree_draw quadtree capture,-lavcodec -lavformat -lavutil -lswscale))
+# $(eval $(call target,voxel_capture,main_capture events art timing pointset octree_file octree_draw quadtree capture,-lavcodec -lavformat -lavutil -lswscale))
 endif
 
 # Header dependencies

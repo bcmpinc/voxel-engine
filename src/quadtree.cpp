@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include "quadtree.h"
+#include "art.h"
 
 static const unsigned int B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
 static const unsigned int S[] = {8, 4, 2, 1};
@@ -31,7 +32,6 @@ void quadtree::set(int x, int y) {
         y = (y | (y << S[i])) & B[i];
     }
     map[M + (x | (y<<1))] = 1;
-    face[x | (y<<1)] = 0x3f7fff;
 }
 
 void quadtree::set_face(int v, int color) {
@@ -47,7 +47,7 @@ void quadtree::set_face(int v, int color) {
     }
     x &= 0xffff;
     y &= 0xffff;
-    face[x + y*SIZE] = color;
+    pixel(x, y, color);
 }    
 
 /**
@@ -58,7 +58,7 @@ quadtree::quadtree() {
 }
 
 /** 
- * Sets given node to 1 if one of its children is nonzero. 
+ * Sets given node to 0 if all its children are zero. 
  */
 void quadtree::compute(unsigned int i) {
     if (children[i+1]==0) map[i] = 0;
@@ -77,38 +77,21 @@ void quadtree::build_fill(unsigned int i) {
     
 }
 
-void quadtree::build_check(glm::dvec3 * normals, unsigned int i, int x1, int x2, int y1, int y2) {
+void quadtree::build_check(int width, int height, unsigned int i, int size) {
     // Check if entirely outside of frustum.
-    for (int j=0; j<4; j++) {
-        if (
-            glm::dot(glm::dvec3(x1,y1,SIZE), normals[j])<0 &&
-            glm::dot(glm::dvec3(x2,y1,SIZE), normals[j])<0 &&
-            glm::dot(glm::dvec3(x1,y2,SIZE), normals[j])<0 &&
-            glm::dot(glm::dvec3(x2,y2,SIZE), normals[j])<0
-        ) {
-            map[i]=0;
-            return;
-        }
+    if (width<=0 || height<=0) {
+        map[i]=0;
+        return;
     }
     // Check if partially out of frustum.
-    if (i<L) {
-        for (int j=0; j<4; j++) {
-            if (
-                glm::dot(glm::dvec3(x1,y1,SIZE), normals[j])<0 ||
-                glm::dot(glm::dvec3(x2,y1,SIZE), normals[j])<0 ||
-                glm::dot(glm::dvec3(x1,y2,SIZE), normals[j])<0 ||
-                glm::dot(glm::dvec3(x2,y2,SIZE), normals[j])<0
-            ) {
-                int xm = (x1+x2)/2;
-                int ym = (y1+y2)/2;
-                map[i]=1;
-                build_check(normals,i*4+4,x1,xm,y1,ym);
-                build_check(normals,i*4+5,xm,x2,y1,ym);
-                build_check(normals,i*4+6,x1,xm,ym,y2);
-                build_check(normals,i*4+7,xm,x2,ym,y2);
-                return;
-            }
-        }
+    if (i<L && (width<size || height<size)) {
+        map[i]=1;
+        size/=2;
+        build_check(width,     height,     i*4+4,size);
+        build_check(width-size,height,     i*4+5,size);
+        build_check(width,     height-size,i*4+6,size);
+        build_check(width-size,height-size,i*4+7,size);
+        return;
     }
     build_fill(i);
 }
@@ -116,15 +99,12 @@ void quadtree::build_check(glm::dvec3 * normals, unsigned int i, int x1, int x2,
 /**
  * Ensures that a node is non-zero if one of its children is nonzero.
  */
-void quadtree::build(glm::dvec3 * normals) {
-    build_check(normals,0,-SIZE,0,-SIZE,0);
-    build_check(normals,1, 0,SIZE,-SIZE,0);
-    build_check(normals,2,-SIZE,0, 0,SIZE);
-    build_check(normals,3, 0,SIZE, 0,SIZE);
-}
-
-void quadtree::clear_face() {
-    memset(face,0xc0,sizeof(face));
+void quadtree::build(int width, int height) {
+    int size = SIZE/2;
+    build_check(width,      height,      0, size);
+    build_check(width-size, height,      1, size);
+    build_check(width,      height-size, 2, size);
+    build_check(width-size, height-size, 3, size);
 }
 
 const unsigned int quadtree::dim;

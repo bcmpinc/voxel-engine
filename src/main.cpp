@@ -48,14 +48,12 @@ int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     position = glm::dvec3(0, -1000000, 0);
     
-    uint32_t cubemap = prepare_cubemap();
-    
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            octree_draw(&in, cubemap);
-            draw_cubemap(cubemap);
+            octree_draw(&in);
+            draw_box();
             flip_screen();
             
             glm::dvec3 eye(orientation[2]);

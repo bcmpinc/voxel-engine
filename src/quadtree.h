@@ -36,16 +36,14 @@ struct quadtree {
         uint8_t  map[N];
         uint32_t children[N/4];
     };
-    uint32_t face[SIZE*SIZE];
         
     quadtree();
     void set(int x, int y);
     void set_face(int v, int color);
     void compute(unsigned int i);
     void build_fill(unsigned int i);
-    void build_check(glm::dvec3* normals, unsigned int i, int x1, int x2, int y1, int y2);
-    void build(glm::dvec3 * normals);
-    void clear_face();
+    void build_check(int width, int height, unsigned int i, int size);
+    void build(int width, int height);
 };
 
 

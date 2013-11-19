@@ -28,11 +28,13 @@
 void init_screen(const char * caption);
 void flip_screen();
 
-void draw_box();
-void draw_cubemap(uint32_t texture);
+void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
 
-uint32_t load_texture(const char* filename);
-uint32_t load_cubemap(const char* format);
+void draw_box();
+void draw_cubemap(uint32_t texture); // OpenGL
+
+uint32_t load_texture(const char* filename); // OpenGL
+uint32_t load_cubemap(const char* format); // OpenGL
 
 namespace frustum {
     // Compute frustum parameters.
