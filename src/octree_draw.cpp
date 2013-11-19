@@ -36,6 +36,9 @@ namespace {
     octree * root;
 }
 
+static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
+static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);
+
 // Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
 typedef int32_t v4si __attribute__ ((vector_size (16)));
 

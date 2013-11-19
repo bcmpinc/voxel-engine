@@ -21,9 +21,15 @@
 #include <stdint.h>
 #include <glm/glm.hpp>
 
-#define SCREEN_WIDTH    1024
-#define SCREEN_HEIGHT    768
 #define SCREEN_FULLSCREEN  0
+
+#if SCREEN_FULLSCREEN == 1
+# define SCREEN_WIDTH    1920
+# define SCREEN_HEIGHT   1080
+#else
+# define SCREEN_WIDTH    1024
+# define SCREEN_HEIGHT    768
+#endif
 
 void init_screen(const char * caption);
 void flip_screen();
