@@ -42,19 +42,41 @@ static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);
 // Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
 typedef int32_t v4si __attribute__ ((vector_size (16)));
 
-#if 0
 template<int C>
 struct FaceRenderer {
     static const int AX=4, AY=2, AZ=1;
 
     /** Returns true if quadtree node is rendered 
      * Function is assumed to be called only if quadtree node is not yet fully rendered.
+     * The bounds array is ordered as DELTA.
+     * C is the corner that is furthest away from the camera.
      */
     static bool traverse(
-        unsigned int quadnode, uint32_t octnode, uint32_t octcolor, v4si bounds[8]
+        int quadnode, uint32_t octnode, uint32_t octcolor, v4si bounds[8]
     ){
+        if (quadnode<(int)quadtree::L) {
+            // Traverse quadtree 
+            if (face.map[quadnode*4+4]) traverse(quadnode*4+4, octnode, octcolor, bounds); 
+            if (face.map[quadnode*4+5]) traverse(quadnode*4+5, octnode, octcolor, bounds); 
+            if (face.map[quadnode*4+6]) traverse(quadnode*4+6, octnode, octcolor, bounds); 
+            if (face.map[quadnode*4+7]) traverse(quadnode*4+7, octnode, octcolor, bounds); 
+        } else {
+            // Rendering
+            if (face.map[quadnode*4+4]) face.set_face(quadnode*4+4, octcolor); 
+            if (face.map[quadnode*4+5]) face.set_face(quadnode*4+5, octcolor); 
+            if (face.map[quadnode*4+6]) face.set_face(quadnode*4+6, octcolor); 
+            if (face.map[quadnode*4+7]) face.set_face(quadnode*4+7, octcolor); 
+        }
+        if (quadnode>=0) {
+            face.compute(quadnode);
+            return !face.map[quadnode];
+        } else {
+            return face.children[0]==0;
+        }
+        
+#if 0
         // behind camera occlusion
-        if (bounds[0][1] - bounds[0][0]<=0) return false;
+        if (bounds[C][1] - bounds[C][0]<=0) return false;
         
         // frustum occlusion
         int check=15; // x1, x2, y1, y2
@@ -129,22 +151,35 @@ struct FaceRenderer {
             face.compute(quadnode);
             return !face.map[quadnode];
         }
+#endif
     }
 };
-#endif
     
-static const int32_t ONE = 1<<(sizeof(int32_t)-2);
-    
+static const double SCENE_SIZE = 1<<(sizeof(int32_t)-4);
+
+static const glm::dvec3 DELTA[8]={
+    glm::dvec3(-1,-1,-1) * SCENE_SIZE,
+    glm::dvec3(-1,-1, 1) * SCENE_SIZE,
+    glm::dvec3(-1, 1,-1) * SCENE_SIZE,
+    glm::dvec3(-1, 1, 1) * SCENE_SIZE,
+    glm::dvec3( 1,-1,-1) * SCENE_SIZE,
+    glm::dvec3( 1,-1, 1) * SCENE_SIZE,
+    glm::dvec3( 1, 1,-1) * SCENE_SIZE,
+    glm::dvec3( 1, 1, 1) * SCENE_SIZE,
+};
+
+static const glm::dvec4 quadtree_bounds(
+    frustum::left  /(double)frustum::near,
+    frustum::right /(double)frustum::near*quadtree::SIZE/SCREEN_WIDTH,
+    frustum::top   /(double)frustum::near,
+    frustum::bottom/(double)frustum::near*quadtree::SIZE/SCREEN_HEIGHT
+);
+
 /** Render the octree to the OpenGL cubemap texture. 
  */
 void octree_draw(octree_file * file) {
     Timer t_global;
     
-    int x = position.x;
-    int y = position.y;
-    int z = position.z;
-    int W = SCENE_SIZE;
-
     double timer_prepare;
     double timer_query;
     double timer_transfer;
@@ -163,8 +198,21 @@ void octree_draw(octree_file * file) {
         
     Timer t_query;
     
-    // Do the actual rendering of the scene to the face (i.e. execute the query).
-    // TODO
+    // Do the actual rendering of the scene (i.e. execute the query).
+    v4si bounds[8];
+    for (int i=0; i<8; i++) {
+        // Compute position of octree corners in camera-space
+        glm::dvec3 coord = inverse_orientation * (DELTA[i] - position);
+        v4si b = {
+            (int)(coord.z*quadtree_bounds[0] - coord.x),
+            (int)(coord.z*quadtree_bounds[1] - coord.x),
+            (int)(coord.z*quadtree_bounds[2] - coord.y),
+            (int)(coord.z*quadtree_bounds[3] - coord.y),
+        };
+        bounds[i] = b;
+    }
+    FaceRenderer<0>::traverse(-1, 0, 0x000000, bounds);
+    
     
     timer_query = t_query.elapsed();
 

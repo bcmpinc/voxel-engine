@@ -45,7 +45,7 @@ void flip_screen() {
 }
 
 void pixel(uint32_t x, uint32_t y, uint32_t c) {
-    if (x>=0 && y>=0 && x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
+    if (x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
         int64_t i = x+y*(SCREEN_WIDTH);
         pixs[i] = c;
     } else abort();

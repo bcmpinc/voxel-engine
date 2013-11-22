@@ -56,7 +56,7 @@ pointset::~pointset() {
  */
 void pointset::enable_write(bool flag) {
     if (write) {
-        int ret = mprotect(list, size, PROT_READ | (write?PROT_WRITE:0));
+        int ret = mprotect(list, size, PROT_READ | (flag?PROT_WRITE:0));
         if (ret) {perror("Could not change read/write memory protection"); exit(1);}
     } else{
         fprintf(stderr, "Not opened in write mode");

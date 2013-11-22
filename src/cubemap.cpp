@@ -35,7 +35,7 @@
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
-int main(int argc, char *argv[]) {
+int main() {
     init_screen("Cubemap test renderer");
     
     uint32_t cubemap = load_cubemap("img/cubemap%d.png");

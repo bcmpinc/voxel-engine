@@ -13,10 +13,10 @@ else
 endif
 
 ifeq "$(OPTIMIZATION)" "yes"
-  CXXFLAGS=-Wall -Ofast -g -Wno-unused-result -march=native -flto
+  CXXFLAGS=-Wall -Wextra -Ofast -g -Wno-unused-result -march=native -flto
   LDFLAGS=-fwhole-program -fuse-linker-plugin
 else
-  CXXFLAGS=-Wall -O0 -g -Wno-unused-result
+  CXXFLAGS=-Wall -Wextra -O0 -g -Wno-unused-result
 endif
 
 # Deafult rule patterns

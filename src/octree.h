@@ -53,7 +53,4 @@ void octree_draw(octree_file* file);
 
 uint32_t prepare_cubemap();
 
-static const uint32_t OCTREE_DEPTH = 20;
-static const uint32_t SCENE_SIZE = 1 << OCTREE_DEPTH;
-
 #endif

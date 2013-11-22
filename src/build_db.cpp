@@ -102,11 +102,11 @@ bool hilbert3d_compare( const point & p1,const point & p2 ) {
 }
 
 #define CLAMP(x,l,u) (x<l?l:x>u?u:x)
-uint32_t rgb(uint32_t r, uint32_t g, uint32_t b) {
+uint32_t rgb(int32_t r, int32_t g, int32_t b) {
   return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
 }
 uint32_t rgb(float r, float g, float b) {
-  return rgb((uint32_t)(r+0.5),(uint32_t)(g+0.5),(uint32_t)(b+0.5));
+  return rgb((int32_t)(r+0.5),(int32_t)(g+0.5),(int32_t)(b+0.5));
 }
 
 uint32_t average(octree* root, int index) {
@@ -303,7 +303,6 @@ int main(int argc, char ** argv){
           clear(root[next]);
           cur->child[idx] = next;
         }
-        assert(cur->child[idx]>=0);
         assert(cur->child[idx]<nodesum);
         cur = &root[cur->child[idx]];
       }
