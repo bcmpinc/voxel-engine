@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     octree_file in(infile);
 
     init_screen("Voxel renderer");
-    position = glm::dvec3(0, -1000000, 0);
+    position = glm::dvec3(0, 0, 0);
     
     // mainloop
     while (!quit) {
