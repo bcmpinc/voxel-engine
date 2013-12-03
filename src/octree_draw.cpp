@@ -47,8 +47,6 @@ const v4si quad_permutation[8] = {
     {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
 };
 
-static const int AX=4, AY=2, AZ=1;
-
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
  * The bounds array is ordered as DELTA.
@@ -62,18 +60,13 @@ static bool traverse(
     if (d<=0) return false;
     
     // frustum occlusion
-    int check=15; // x1, x2, y1, y2
-    //v4si ltz={0,0,0,0};
-    //v4si gtz={0,0,0,0};
+    v4si ltz={0,0,0,0};
+    v4si gtz={0,0,0,0};
     for (int i = 0; i<8; i++) {
-        //ltz |= bounds[i]<0;
-        //gtz |= bounds[i]>0;
-        if (bounds[i][0]<0) check &=~1;
-        if (bounds[i][1]>0) check &=~2;
-        if (bounds[i][2]<0) check &=~4;
-        if (bounds[i][3]>0) check &=~8;
+        ltz |= bounds[i]<0;
+        gtz |= bounds[i]>0;
     }
-    if (check) return false;
+    if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) return false;
     
     // Recursion
     if (depth>=0 && d <= (2<<depth)) {
@@ -117,7 +110,7 @@ static bool traverse(
     }
 }
     
-static const int32_t SCENE_DEPTH = 24;
+static const int32_t SCENE_DEPTH = 20;
 static const double SCENE_SIZE = 1<<SCENE_DEPTH;
 
 static const glm::dvec3 DELTA[8]={
