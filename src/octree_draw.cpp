@@ -181,7 +181,7 @@ void octree_draw(octree_file * file) {
     
     timer_transfer = t_transfer.elapsed();
             
-    std::printf("%6.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f \n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f \n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 

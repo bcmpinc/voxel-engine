@@ -62,6 +62,7 @@ endef
 
 # Target definitions
 $(eval $(call target,voxel,main events art_sdl timing pointset octree_file octree_draw quadtree))
+$(eval $(call target,benchmark,benchmark events art_sdl timing pointset octree_file octree_draw quadtree))
 $(eval $(call target,convert,convert))
 $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
