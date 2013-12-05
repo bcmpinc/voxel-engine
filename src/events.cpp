@@ -40,7 +40,7 @@ namespace {
     bool mousemove=false;
 
     // Position
-    const double rotatespeed = -0.3, movespeed = 1<<12;  
+    const double rotatespeed = -0.3, movespeed = 1<<17;  
     const int MILLISECONDS_PER_FRAME = 33;
 }
 

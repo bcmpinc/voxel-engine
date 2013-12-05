@@ -47,6 +47,8 @@ const v4si quad_permutation[8] = {
     {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
 };
 
+const v4si nil = {};
+
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
  * The bounds array is ordered as DELTA.
@@ -54,31 +56,26 @@ const v4si quad_permutation[8] = {
  */
 static bool traverse(
     const int32_t C, const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const int32_t depth, const v4si bounds[8]
-){
-    // behind camera occlusion
-    int32_t d = bounds[C][1] - bounds[C][0];
-    if (d<=0) return false;
-    
-    // frustum occlusion
-    v4si ltz={0,0,0,0};
-    v4si gtz={0,0,0,0};
-    for (int i = 0; i<8; i++) {
-        ltz |= bounds[i]<0;
-        gtz |= bounds[i]>0;
-    }
-    if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) return false;
+){    
+    v4si ltz;
+    v4si gtz;
+    v4si new_bounds[8];
     
     // Recursion
-    if (depth>=0 && d <= (2<<depth)) {
+    if (depth>=0 && bounds[C][1] - bounds[C][0] <= (2<<depth)) {
         // Traverse octree
         octree &s = root[octnode];
-        v4si new_bounds[8];
         for (int k = 7; k>=0; k--) {
             int i = k^C;
             if (~octnode && s.avgcolor[i]<0) continue;
+            ltz = gtz = nil;
             for (int j = 0; j<8; j++) {
                 new_bounds[j] = (bounds[i] + bounds[j])/2;
+                ltz |= new_bounds[j]<0;
+                gtz |= new_bounds[j]>0;
             }
+            if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+            if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (~octnode) {
                 if (traverse(C, quadnode, s.child[i], s.avgcolor[i], depth-1, new_bounds)) return true;
             } else {
@@ -88,18 +85,21 @@ static bool traverse(
         return false;
     } else {
         // Traverse quadtree 
-        if (quadnode<(int)quadtree::M) {
-            v4si new_bounds[8];
-            for (int i = 4; i<8; i++) {
-                for (int j = 0; j<8; j++) {
-                    new_bounds[j] = (bounds[j] + __builtin_shuffle(bounds[j],quad_permutation[i])) / 2;
-                }
-                if (face.map[quadnode*4+i]) traverse(C, quadnode*4+i, octnode, octcolor, depth, new_bounds); 
+        assert(quadnode<(int)quadtree::M);
+        for (int i = 4; i<8; i++) {
+            if (!face.map[quadnode*4+i]) continue;
+            ltz = gtz = nil;
+            for (int j = 0; j<8; j++) {
+                new_bounds[j] = (bounds[j] + __builtin_shuffle(bounds[j],quad_permutation[i])) / 2;
+                ltz |= new_bounds[j]<0;
+                gtz |= new_bounds[j]>0;
             }
-        } else {
-            // Rendering
-            face.set_face(quadnode, octcolor);
-            return true;
+            if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+            if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
+            if (quadnode<(int)quadtree::L)
+                traverse(C, quadnode*4+i, octnode, octcolor, depth, new_bounds); 
+            else
+                face.set_face(quadnode*4+i, octcolor); // Rendering
         }
         if (quadnode>=0) {
             face.compute(quadnode);
@@ -110,7 +110,7 @@ static bool traverse(
     }
 }
     
-static const int32_t SCENE_DEPTH = 20;
+static const int32_t SCENE_DEPTH = 28;
 static const double SCENE_SIZE = 1<<SCENE_DEPTH;
 
 static const glm::dvec3 DELTA[8]={
@@ -181,7 +181,7 @@ void octree_draw(octree_file * file) {
     
     timer_transfer = t_transfer.elapsed();
             
-    printf("%6.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer);
+    std::printf("%6.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f \n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
