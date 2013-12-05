@@ -73,6 +73,7 @@ int main() {
         double times[N];
         for (int j=0; j<N; j++) {
             Timer t;
+            clear_creen();
             octree_draw(&in);
             flip_screen();
             times[j] = t.elapsed();

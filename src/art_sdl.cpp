@@ -39,9 +39,12 @@ void init_screen(const char * caption) {
     pixs=(int*)screen->pixels;  
 }
 
+void clear_creen() {
+    SDL_FillRect(screen,NULL,0xaaccff);
+}
+
 void flip_screen() {
     SDL_Flip (screen);
-    SDL_FillRect(screen,NULL,0xaaccff);
 }
 
 void pixel(uint32_t x, uint32_t y, uint32_t c) {

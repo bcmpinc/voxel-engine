@@ -102,7 +102,6 @@ static bool traverse(
         return false;
     } else {
         // Traverse quadtree 
-        assert(quadnode<(int)quadtree::M);
         for (int i = 4; i<8; i++) {
             if (!face.map[quadnode*4+i]) continue;
             ltz = gtz = nil;

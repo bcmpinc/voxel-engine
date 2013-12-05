@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     while (!quit) {
         Timer t;
         if (moves) {
+            clear_creen();
             octree_draw(&in);
             //draw_box();
             flip_screen();

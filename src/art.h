@@ -32,6 +32,7 @@
 #endif
 
 void init_screen(const char * caption);
+void clear_creen();
 void flip_screen();
 
 void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
