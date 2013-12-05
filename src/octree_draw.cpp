@@ -34,6 +34,7 @@ using std::min;
 namespace {
     quadtree face;
     octree * root;
+    int C;
 }
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
@@ -70,7 +71,7 @@ const v4si nil = {};
  * Furthermore, pos is the location of the center of the octree node, relative to the viewer in octree space.
  */
 static bool traverse(
-    const int C, const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const v4si bounds[8], v4si pos, int depth
+    const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const v4si bounds[8], const v4si pos, const int depth
 ){    
     v4si ltz;
     v4si gtz;
@@ -92,11 +93,10 @@ static bool traverse(
                 gtz |= new_bounds[j]>0;
             }
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (~octnode) {
-                if (traverse(C, quadnode, s.child[i], s.avgcolor[i], new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
             } else {
-                if (traverse(C, quadnode, ~0u, octcolor, new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, ~0u, octcolor, new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
             }
         }
         return false;
@@ -112,9 +112,8 @@ static bool traverse(
                 gtz |= new_bounds[j]>0;
             }
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (quadnode<(int)quadtree::L)
-                traverse(C, quadnode*4+i, octnode, octcolor, new_bounds, pos, depth); 
+                traverse(quadnode*4+i, octnode, octcolor, new_bounds, pos, depth); 
             else
                 face.set_face(quadnode*4+i, octcolor); // Rendering
         }
@@ -156,7 +155,7 @@ void octree_draw(octree_file * file) {
     
     // Do the actual rendering of the scene (i.e. execute the query).
     v4si bounds[8];
-    int max_z=-1<<31, max_z_i=0;
+    int max_z=-1<<31;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
         v4si vertex = DELTA[i]*SCENE_SIZE;
@@ -170,11 +169,11 @@ void octree_draw(octree_file * file) {
         bounds[i] = b;
         if (max_z < coord.z) {
             max_z = coord.z;
-            max_z_i = i;
+            C = i;
         }
     }
     v4si pos = {(int)position.x, (int)position.y, (int)position.z};
-    traverse(max_z_i, -1, 0, 0, bounds, -pos, SCENE_DEPTH-1);
+    traverse(-1, 0, 0, bounds, -pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();

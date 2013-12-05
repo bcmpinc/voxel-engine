@@ -22,7 +22,7 @@
 #include <glm/glm.hpp>
 
 struct quadtree {
-    static const unsigned int dim = 10;
+    static const unsigned int dim = 11;
     static const unsigned int N = (4<<dim<<dim)/3-1;
     static const unsigned int M = N/4-1;
     static const unsigned int L = M/4-1;
