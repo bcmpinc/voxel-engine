@@ -77,18 +77,17 @@ static bool traverse(
     v4si new_bounds[8];
     
     // Recursion
-    if (depth>=0 && bounds[C][1] - bounds[C][0] <= 4<<depth) {
+    if (depth>=0 && bounds[C][1] - bounds[C][0] <= 2<<SCENE_DEPTH) {
         // Traverse octree
         octree &s = root[octnode];
         v4si octant = -(pos<0);
         int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
-        assert(furthest>=0 && furthest<8);
         for (int k = 0; k<8; k++) {
             int i = furthest^k;
             if (~octnode && s.avgcolor[i]<0) continue;
             ltz = gtz = nil;
             for (int j = 0; j<8; j++) {
-                new_bounds[j] = (bounds[i] + bounds[j])/2;
+                new_bounds[j] = (bounds[i] + bounds[j]);
                 ltz |= new_bounds[j]<0;
                 gtz |= new_bounds[j]>0;
             }

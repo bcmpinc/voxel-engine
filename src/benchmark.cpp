@@ -90,6 +90,7 @@ int main() {
             results[i] += times[j];
         }
         results[i] /= N-2;
+        handle_events();
     }
 
     printf("\nBenchmark results:");
