@@ -34,7 +34,6 @@ using std::min;
 namespace {
     quadtree face;
     octree * root;
-    int32_t C;
 }
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
@@ -48,39 +47,57 @@ const v4si quad_permutation[8] = {
     {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
 };
 
+static const int32_t SCENE_DEPTH = 26;
+static const int32_t SCENE_SIZE = 1<<SCENE_DEPTH;
+
+static const v4si DELTA[8]={
+    {-1,-1,-1},
+    {-1,-1, 1},
+    {-1, 1,-1},
+    {-1, 1, 1},
+    { 1,-1,-1},
+    { 1,-1, 1},
+    { 1, 1,-1},
+    { 1, 1, 1},
+};
+
 const v4si nil = {};
 
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
  * The bounds array is ordered as DELTA.
  * C is the corner that is furthest away from the camera.
+ * Furthermore, pos is the location of the center of the octree node, relative to the viewer in octree space.
  */
 static bool traverse(
-    const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const v4si bounds[8]
+    const int C, const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const v4si bounds[8], v4si pos, int depth
 ){    
     v4si ltz;
     v4si gtz;
     v4si new_bounds[8];
     
     // Recursion
-    if (bounds[C][1] - bounds[C][0] <= (2<<26)) {
+    if (depth>=0 && bounds[C][1] - bounds[C][0] <= 4<<depth) {
         // Traverse octree
         octree &s = root[octnode];
-        for (int k = 7; k>=0; k--) {
-            int i = k^C;
+        v4si octant = -(pos<0);
+        int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
+        assert(furthest>=0 && furthest<8);
+        for (int k = 0; k<8; k++) {
+            int i = furthest^k;
             if (~octnode && s.avgcolor[i]<0) continue;
             ltz = gtz = nil;
             for (int j = 0; j<8; j++) {
-                new_bounds[j] = (bounds[i] + bounds[j]);
+                new_bounds[j] = (bounds[i] + bounds[j])/2;
                 ltz |= new_bounds[j]<0;
                 gtz |= new_bounds[j]>0;
             }
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (~octnode) {
-                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bounds)) return true;
+                if (traverse(C, quadnode, s.child[i], s.avgcolor[i], new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
             } else {
-                if (traverse(quadnode, ~0u, octcolor, new_bounds)) return true;
+                if (traverse(C, quadnode, ~0u, octcolor, new_bounds, pos + (DELTA[i]<<depth), depth-1)) return true;
             }
         }
         return false;
@@ -98,7 +115,7 @@ static bool traverse(
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (quadnode<(int)quadtree::L)
-                traverse(quadnode*4+i, octnode, octcolor, new_bounds); 
+                traverse(C, quadnode*4+i, octnode, octcolor, new_bounds, pos, depth); 
             else
                 face.set_face(quadnode*4+i, octcolor); // Rendering
         }
@@ -111,20 +128,6 @@ static bool traverse(
     }
 }
     
-static const int32_t SCENE_DEPTH = 26;
-static const double SCENE_SIZE = 1<<SCENE_DEPTH;
-
-static const glm::dvec3 DELTA[8]={
-    glm::dvec3(-1,-1,-1) * SCENE_SIZE,
-    glm::dvec3(-1,-1, 1) * SCENE_SIZE,
-    glm::dvec3(-1, 1,-1) * SCENE_SIZE,
-    glm::dvec3(-1, 1, 1) * SCENE_SIZE,
-    glm::dvec3( 1,-1,-1) * SCENE_SIZE,
-    glm::dvec3( 1,-1, 1) * SCENE_SIZE,
-    glm::dvec3( 1, 1,-1) * SCENE_SIZE,
-    glm::dvec3( 1, 1, 1) * SCENE_SIZE,
-};
-
 static const double quadtree_bounds[] = {
     frustum::left  /(double)frustum::near,
    (frustum::left + (frustum::right -frustum::left)*(double)quadtree::SIZE/SCREEN_WIDTH )/frustum::near,
@@ -154,10 +157,11 @@ void octree_draw(octree_file * file) {
     
     // Do the actual rendering of the scene (i.e. execute the query).
     v4si bounds[8];
-    int max_z=-(1<<SCENE_DEPTH), max_z_i=0;
+    int max_z=-1<<31, max_z_i=0;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
-        glm::dvec3 coord = orientation * (DELTA[i] - position);
+        v4si vertex = DELTA[i]*SCENE_SIZE;
+        glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
         v4si b = {
             (int)(coord.z*quadtree_bounds[0] - coord.x),
             (int)(coord.z*quadtree_bounds[1] - coord.x),
@@ -170,8 +174,8 @@ void octree_draw(octree_file * file) {
             max_z_i = i;
         }
     }
-    C = max_z_i;
-    traverse(-1, 0, 0, bounds);
+    v4si pos = {(int)position.x, (int)position.y, (int)position.z};
+    traverse(max_z_i, -1, 0, 0, bounds, -pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();

@@ -56,13 +56,15 @@ int main(int argc, char *argv[]) {
             //draw_box();
             flip_screen();
             
-            printf("{\"%s\",  glm::dvec3(%10.0lf, %10.0lf, %10.0lf),  glm::dmat3(%6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf)},\n", name,
-                   position.x,position.y,position.z, 
-                   orientation[0].x,orientation[0].y,orientation[0].z,
-                   orientation[1].x,orientation[1].y,orientation[1].z,
-                   orientation[2].x,orientation[2].y,orientation[2].z
-            );
-            fflush(stdout);
+            if (false) {
+                printf("{\"%s\",  glm::dvec3(%10.0lf, %10.0lf, %10.0lf),  glm::dmat3(%6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf)},\n", name,
+                    position.x,position.y,position.z, 
+                    orientation[0].x,orientation[0].y,orientation[0].z,
+                    orientation[1].x,orientation[1].y,orientation[1].z,
+                    orientation[2].x,orientation[2].y,orientation[2].z
+                );
+                fflush(stdout);
+            }
         }
         next_frame(t.elapsed());
         handle_events();
