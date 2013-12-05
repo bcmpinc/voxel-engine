@@ -34,6 +34,7 @@ using std::min;
 namespace {
     quadtree face;
     octree * root;
+    int32_t C;
 }
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
@@ -55,14 +56,14 @@ const v4si nil = {};
  * C is the corner that is furthest away from the camera.
  */
 static bool traverse(
-    const int32_t C, const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const int32_t depth, const v4si bounds[8]
+    const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, const v4si bounds[8]
 ){    
     v4si ltz;
     v4si gtz;
     v4si new_bounds[8];
     
     // Recursion
-    if (depth>=0 && bounds[C][1] - bounds[C][0] <= (2<<depth)) {
+    if (bounds[C][1] - bounds[C][0] <= (2<<26)) {
         // Traverse octree
         octree &s = root[octnode];
         for (int k = 7; k>=0; k--) {
@@ -70,16 +71,16 @@ static bool traverse(
             if (~octnode && s.avgcolor[i]<0) continue;
             ltz = gtz = nil;
             for (int j = 0; j<8; j++) {
-                new_bounds[j] = (bounds[i] + bounds[j])/2;
+                new_bounds[j] = (bounds[i] + bounds[j]);
                 ltz |= new_bounds[j]<0;
                 gtz |= new_bounds[j]>0;
             }
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (~octnode) {
-                if (traverse(C, quadnode, s.child[i], s.avgcolor[i], depth-1, new_bounds)) return true;
+                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bounds)) return true;
             } else {
-                if (traverse(C, quadnode, ~0u, octcolor, depth-1, new_bounds)) return true;
+                if (traverse(quadnode, ~0u, octcolor, new_bounds)) return true;
             }
         }
         return false;
@@ -97,7 +98,7 @@ static bool traverse(
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (new_bounds[C][1] - new_bounds[C][0]<=0) continue; // behind camera occlusion
             if (quadnode<(int)quadtree::L)
-                traverse(C, quadnode*4+i, octnode, octcolor, depth, new_bounds); 
+                traverse(quadnode*4+i, octnode, octcolor, new_bounds); 
             else
                 face.set_face(quadnode*4+i, octcolor); // Rendering
         }
@@ -110,7 +111,7 @@ static bool traverse(
     }
 }
     
-static const int32_t SCENE_DEPTH = 28;
+static const int32_t SCENE_DEPTH = 26;
 static const double SCENE_SIZE = 1<<SCENE_DEPTH;
 
 static const glm::dvec3 DELTA[8]={
@@ -169,7 +170,8 @@ void octree_draw(octree_file * file) {
             max_z_i = i;
         }
     }
-    traverse(max_z_i, -1, 0, 0, SCENE_DEPTH, bounds);
+    C = max_z_i;
+    traverse(-1, 0, 0, bounds);
     
     
     timer_query = t_query.elapsed();
