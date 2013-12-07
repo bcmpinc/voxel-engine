@@ -71,13 +71,15 @@ int main() {
         position = scene[i].position;
         orientation = scene[i].orientation;
         double times[N];
-        for (int j=0; j<N; j++) {
+        for (int j=-1; j<N; j++) {
             Timer t;
             clear_creen();
             octree_draw(&in);
             flip_screen();
-            times[j] = t.elapsed();
-            next_frame(times[j]);
+            if (j>=0) {
+                times[j] = t.elapsed();
+                next_frame(times[j]);
+            }
         }
         printf("Test %2d:", i);
         for (int j=0; j<N; j++) {
