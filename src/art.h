@@ -36,6 +36,7 @@ void clear_creen();
 void flip_screen();
 
 void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
+void export_png(const char * out); // SDL (Software) + libpng
 
 void draw_box();
 void draw_cubemap(uint32_t texture); // OpenGL

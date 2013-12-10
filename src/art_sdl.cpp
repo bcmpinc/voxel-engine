@@ -1,5 +1,6 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
+#include <png.h>
 
 #include "events.h"
 #include "art.h"
@@ -48,10 +49,9 @@ void flip_screen() {
 }
 
 void pixel(uint32_t x, uint32_t y, uint32_t c) {
-    if (x<SCREEN_WIDTH && y<SCREEN_HEIGHT) {
-        int64_t i = x+y*(SCREEN_WIDTH);
-        pixs[i] = c;
-    } else abort();
+    assert(x<SCREEN_WIDTH && y<SCREEN_HEIGHT);
+    int64_t i = x+y*(SCREEN_WIDTH);
+    pixs[i] = c;
 }
 
 /** Draws a line. */
@@ -162,3 +162,21 @@ void draw_box() {
     }
 }
 
+void export_png(const char * out) {
+    png_bytep row_pointers[SCREEN_HEIGHT];
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+    if (png_ptr && info_ptr && !setjmp(png_jmpbuf(png_ptr))) {
+        for (int i=0; i<SCREEN_WIDTH*SCREEN_HEIGHT; i++)
+            pixs[i] = 0xff000000 | ((pixs[i]&0xff0000)>>16) | (pixs[i]&0xff00) | ((pixs[i]&0xff)<<16);
+        FILE * fp = fopen(out,"wb");
+        png_init_io (png_ptr, fp);
+        png_set_IHDR(png_ptr, info_ptr, SCREEN_WIDTH, SCREEN_HEIGHT, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        for (int i = 0; i < SCREEN_HEIGHT; i++) row_pointers[i] = (png_bytep)(pixs+i*SCREEN_WIDTH);
+        png_set_rows(png_ptr, info_ptr, row_pointers);
+        png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, 0);
+        fclose(fp);
+    }
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+}
+//#endif

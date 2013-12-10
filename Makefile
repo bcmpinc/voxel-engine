@@ -9,7 +9,7 @@ ifeq "$(OS)" "Windows_NT"
   LDLIBS=-lmingw32 -lSDLmain -lSDL
 else
   CPPFLAGS=-D_GNU_SOURCE=1 -D_REENTRANT
-  LDLIBS=-lSDL -lSDL_image -lrt
+  LDLIBS=-lSDL -lSDL_image -lrt -lpng
 endif
 
 ifeq "$(OPTIMIZATION)" "yes"

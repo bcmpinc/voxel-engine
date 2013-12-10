@@ -61,7 +61,7 @@ quadtree::quadtree() {
  * Sets given node to 0 if all its children are zero. 
  */
 void quadtree::compute(unsigned int i) {
-    if (children[i+1]==0) map[i] = 0;
+    map[i] = children[i+1] > 0;
 }
 
 void quadtree::build_fill(unsigned int i) {
