@@ -73,7 +73,7 @@ const v4si nil = {};
  */
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, 
-    const v4si bound, const v4si dx, const v4si dy, const v4si dz,  
+    const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dltz, const v4si dgtz,
     const v4si pos, const int depth
 ){    
     v4si ltz;
@@ -93,13 +93,13 @@ static bool traverse(
             if ((C^i)&DX) new_bound += dx;
             if ((C^i)&DY) new_bound += dy;
             if ((C^i)&DZ) new_bound += dz;
-            ltz = (new_bound - (dx<0)*dx - (dy<0)*dy - (dz<0)*dz)<0;
-            gtz = (new_bound - (dx>0)*dx - (dy>0)*dy - (dz>0)*dz)>0;
+            ltz = (new_bound - dltz)<0;
+            gtz = (new_bound - dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (~octnode) {
-                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bound, dx, dy, dz, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
             } else {
-                if (traverse(quadnode, ~0u, octcolor, new_bound, dx, dy, dz, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, ~0u, octcolor, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
             }
         }
         return false;
@@ -111,11 +111,13 @@ static bool traverse(
             v4si new_dx = (dx + __builtin_shuffle(dx,quad_permutation[i])) >> 1;
             v4si new_dy = (dy + __builtin_shuffle(dy,quad_permutation[i])) >> 1;
             v4si new_dz = (dz + __builtin_shuffle(dz,quad_permutation[i])) >> 1;
-            ltz = (new_bound - (new_dx<0)*new_dx - (new_dy<0)*new_dy - (new_dz<0)*new_dz)<0;
-            gtz = (new_bound - (new_dx>0)*new_dx - (new_dy>0)*new_dy - (new_dz>0)*new_dz)>0;
+            v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
+            v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
+            ltz = (new_bound - new_dltz)<0;
+            gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (quadnode<(int)quadtree::L)
-                traverse(quadnode*4+i, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, pos, depth); 
+                traverse(quadnode*4+i, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
             else
                 face.set_face(quadnode*4+i, octcolor); // Rendering
         }
@@ -175,13 +177,12 @@ void octree_draw(octree_file * file) {
         }
     }
     v4si pos = {(int)position.x, (int)position.y, (int)position.z};
-    traverse(
-        -1, 0, 0, bounds[C], 
-        (bounds[C^DX]-bounds[C]), 
-        (bounds[C^DY]-bounds[C]), 
-        (bounds[C^DZ]-bounds[C]), 
-        -pos, SCENE_DEPTH-1
-    );
+    v4si new_dx = (bounds[C^DX]-bounds[C]);
+    v4si new_dy = (bounds[C^DY]-bounds[C]);
+    v4si new_dz = (bounds[C^DZ]-bounds[C]);
+    v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
+    v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
+    traverse(-1, 0, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
