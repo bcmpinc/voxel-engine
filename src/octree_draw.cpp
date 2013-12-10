@@ -35,6 +35,7 @@ namespace {
     quadtree face;
     octree * root;
     int C;
+    int count;
 }
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
@@ -78,7 +79,7 @@ static bool traverse(
     v4si ltz;
     v4si gtz;
     v4si new_bound;
-    
+    count++;
     // Recursion
     if (depth>=0 && bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
         // Traverse octree
@@ -153,7 +154,7 @@ void octree_draw(octree_file * file) {
     timer_prepare = t_prepare.elapsed();
 
     Timer t_query;
-    
+    count=0;
     // Do the actual rendering of the scene (i.e. execute the query).
     v4si bounds[8];
     int max_z=-1<<31;
@@ -192,7 +193,7 @@ void octree_draw(octree_file * file) {
     
     timer_transfer = t_transfer.elapsed();
             
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f \n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f | %10d\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer, count);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
