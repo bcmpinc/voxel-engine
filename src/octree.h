@@ -51,6 +51,4 @@ private:
 
 void octree_draw(octree_file* file);
 
-uint32_t prepare_cubemap();
-
 #endif

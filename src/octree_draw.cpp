@@ -35,7 +35,7 @@ namespace {
     quadtree face;
     octree * root;
     int C;
-    int count;
+    int count, count_oct, count_quad;
 }
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
@@ -96,6 +96,7 @@ static bool traverse(
             ltz = (new_bound - dltz)<0;
             gtz = (new_bound - dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+            count_oct++;
             if (~octnode) {
                 if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
             } else {
@@ -116,10 +117,12 @@ static bool traverse(
             ltz = (new_bound - new_dltz)<0;
             gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            if (quadnode<(int)quadtree::L)
+            if (quadnode<(int)quadtree::L) {
                 traverse(quadnode*4+i, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
-            else
+                count_quad++;
+            } else {
                 face.set_face(quadnode*4+i, octcolor); // Rendering
+            }
         }
         if (quadnode>=0) {
             face.compute(quadnode);
@@ -156,7 +159,7 @@ void octree_draw(octree_file * file) {
     timer_prepare = t_prepare.elapsed();
 
     Timer t_query;
-    count=0;
+    count_oct = count_quad = count = 0;
     // Do the actual rendering of the scene (i.e. execute the query).
     v4si bounds[8];
     int max_z=-1<<31;
@@ -194,7 +197,7 @@ void octree_draw(octree_file * file) {
     
     timer_transfer = t_transfer.elapsed();
             
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f | %10d\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer, count);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f | Count:%10d Oct:%10d Quad:%10d\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer, count, count_oct, count_quad);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
