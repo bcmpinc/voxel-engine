@@ -34,16 +34,13 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        fprintf(stderr,"Please specify the file to load (without 'vxl/' & '.oct').\n");
+        fprintf(stderr,"Usage: %s octree_file\n", argv[0]);
         exit(2);
     }
 
     // Determine the file names.
-    char * name = argv[1];
-    int length=strlen(name);
-    char infile[length+9];
-    sprintf(infile, "vxl/%s.oct", name);
-    octree_file in(infile);
+    const char * filename = argv[1];
+    octree_file in(filename);
 
     init_screen("Voxel renderer");
     position = glm::dvec3(0, 0, 0);
@@ -58,7 +55,7 @@ int main(int argc, char *argv[]) {
             flip_screen();
             
             if (false) {
-                printf("{\"%s\",  glm::dvec3(%10.0lf, %10.0lf, %10.0lf),  glm::dmat3(%6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf)},\n", name,
+                printf("{\"%s\",  glm::dvec3(%10.0lf, %10.0lf, %10.0lf),  glm::dmat3(%6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf,  %6.3lf, %6.3lf, %6.3lf)},\n", filename,
                     position.x,position.y,position.z, 
                     orientation[0].x,orientation[0].y,orientation[0].z,
                     orientation[1].x,orientation[1].y,orientation[1].z,
