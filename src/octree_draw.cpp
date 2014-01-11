@@ -58,26 +58,6 @@ static const v4si DELTA[8]={
     { 1, 1, 1},
 };
 
-const v4si quad_permutation[16] = {
-    {},{},{},{},
-    {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
-};
-/** Returns a 1/16th part of the given src.
- * These are ordered:
- * 0 1 2 3
- * 4 5 6 7
- * 8 9 A B
- * C D E F
- */
-inline static v4si get_part(v4si src, int i) {
-    static const v4si shuffle = {1,0,3,2};
-    assert(i>=0 && i<16);
-    int x=i%4, y=i/4;
-    v4si a={4-x,x+1,y+1,4-y};
-    v4si b={x,  3-x,3-y,y  };
-    return (a*src + b*__builtin_shuffle(src, shuffle)) >> 2;
-}
-
 const v4si nil = {};
 
 /** Returns true if quadtree node is rendered 
@@ -120,15 +100,25 @@ static bool traverse(
         }
         return false;
     } else {
-        // Traverse quadtree 
+        /* Traverse the 1/16th parts of the quadtree
+         * These are ordered:
+         * 0 1 2 3
+         * 4 5 6 7
+         * 8 9 A B
+         * C D E F
+         */
         uint32_t val = face.map[quadnode];
+        static const v4si shuffle = {1,0,3,2};
         while (val>0) {
             int i = __builtin_ctz(val);
             val &= val-1;
-            new_bound = get_part(bound, i);
-            v4si new_dx = get_part(dx, i);
-            v4si new_dy = get_part(dy, i);
-            v4si new_dz = get_part(dz, i);
+            int x=i&3, y=i>>2;
+            v4si a={4-x,x+1,y+1,4-y};
+            v4si b={x,  3-x,3-y,y  };
+            new_bound = (a*bound + b*__builtin_shuffle(bound, shuffle)) >> 2;
+            v4si new_dx = (a*dx + b*__builtin_shuffle(dx, shuffle)) >> 2;
+            v4si new_dy = (a*dy + b*__builtin_shuffle(dy, shuffle)) >> 2;
+            v4si new_dz = (a*dz + b*__builtin_shuffle(dz, shuffle)) >> 2;
             v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
             v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
             ltz = (new_bound - new_dltz)<0;
