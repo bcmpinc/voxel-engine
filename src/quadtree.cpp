@@ -24,22 +24,25 @@ static const unsigned int B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555}
 static const unsigned int S[] = {8, 4, 2, 1};
 
 /**
- * Sets a single value at given coordinates on the bottom level of the tree.
+ * Sets a single value at given coordinates on the bottom level of the tree. (unused)
  */
 void quadtree::set(int x, int y) {
-    for (int i=0; i<4; i++) {
+    // Morton 2d encode
+    for (int i=0; i<3; i++) {
         x = (x | (x << S[i])) & B[i];
         y = (y | (y << S[i])) & B[i];
     }
-    map[M + (x | (y<<1))] = 1;
+    // Set bit
+    set_bit(M + (x | (y<<2)));
 }
 
-void quadtree::set_face(int v, int color) {
-    map[v] = 0;
-    v -= M;
-    int x = v;
-    int y = v>>1;
-    for (int i=3; i>=0; i--) {
+void quadtree::set_face(int node, int bit, int color) {
+    map[node] &= ~(1<<bit);
+    int pos = node*16+bit+1;
+    pos -= M;
+    int x = pos;
+    int y = pos>>2;
+    for (int i=2; i>=0; i--) {
         x &= B[i];
         y &= B[i];
         x = (x | (x >> S[i]));
@@ -60,37 +63,47 @@ quadtree::quadtree() {
 /** 
  * Sets given node to 0 if all its children are zero. 
  */
-void quadtree::compute(unsigned int i) {
-    map[i] = children[i+1] > 0;
+void quadtree::compute(int i) {
+    if (i>0 && (map[i]==0)) unset_bit(i-1);
 }
 
-void quadtree::build_fill(unsigned int i) {
+void quadtree::build_fill(int i) {
+    set_bit(i);
     int n=1;
-    while (i<N) {
+    while (i<(signed)M) {
         for (int j=0; j<n; j++) {
-            map[i+j]=1;
+            assert(i+j<(signed)M);
+            map[i+j]=~0;
         }
+        i*=16;
         i++;
-        i<<=2;
-        n<<=2;
+        n*=16;
     }
     
 }
-
-void quadtree::build_check(int width, int height, unsigned int i, int size) {
+/* Recurse info
+ * 
+ * Order:
+ * 0 1 2 3
+ * 4 5 6 7
+ * 8 9 A B
+ * C D E F
+ */
+int DX[] = {0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3};
+int DY[] = {0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3};
+void quadtree::build_check(int width, int height, int i, int size) {
     // Check if entirely outside of frustum.
     if (width<=0 || height<=0) {
-        map[i]=0;
+        if (i>=0) unset_bit(i);
         return;
     }
     // Check if partially out of frustum.
-    if (i<L && (width<size || height<size)) {
-        map[i]=1;
-        size/=2;
-        build_check(width,     height,     i*4+4,size);
-        build_check(width-size,height,     i*4+5,size);
-        build_check(width,     height-size,i*4+6,size);
-        build_check(width-size,height-size,i*4+7,size);
+    if (i<(signed)L && (width<size || height<size)) {
+        if (i>=0) set_bit(i);
+        size/=4;
+        for (int j=0; j<16; j++) {
+            build_check(width-DX[j]*size,height-DY[j]*size,i*16+j+16,size);
+        }
         return;
     }
     build_fill(i);
@@ -100,14 +113,11 @@ void quadtree::build_check(int width, int height, unsigned int i, int size) {
  * Ensures that a node is non-zero if one of its children is nonzero.
  */
 void quadtree::build(int width, int height) {
-    int size = SIZE/2;
-    build_check(width,      height,      0, size);
-    build_check(width-size, height,      1, size);
-    build_check(width,      height-size, 2, size);
-    build_check(width-size, height-size, 3, size);
+    build_check(width, height, -1, SIZE);
 }
 
-const unsigned int quadtree::dim;
+const unsigned int quadtree::CHILD_COUNT;
+const unsigned int quadtree::LAYERS;
 const unsigned int quadtree::N;
 const unsigned int quadtree::M;
 const unsigned int quadtree::L;

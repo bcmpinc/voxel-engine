@@ -61,8 +61,8 @@ $(1): $(addprefix build/,$(addsuffix .o,$(2)))
 endef
 
 # Target definitions
-$(eval $(call target,voxel,main events art_sdl timing pointset octree_file octree_draw quadtree))
-$(eval $(call target,benchmark,benchmark events art_sdl timing pointset octree_file octree_draw quadtree))
+$(eval $(call target,voxel,main events art_sdl timing pointset quadtree octree_file octree_draw))
+$(eval $(call target,benchmark,benchmark events art_sdl timing pointset quadtree octree_file octree_draw))
 $(eval $(call target,convert,convert))
 $(eval $(call target,convert2,convert2 pointset))
 $(eval $(call target,ascii2bin,ascii2bin pointset))
@@ -70,7 +70,7 @@ $(eval $(call target,heightmap,heightmap pointset))
 $(eval $(call target,build_db,build_db pointset timing octree_file))
 $(eval $(call target,cubemap,cubemap events art_gl timing,-lGL))
 ifeq "$(TEST_capture)" "yes"
-# $(eval $(call target,voxel_capture,main_capture events art timing pointset octree_file octree_draw quadtree capture,-lavcodec -lavformat -lavutil -lswscale))
+# $(eval $(call target,voxel_capture,main_capture events art timing pointset quadtree octree_file octree_draw capture,-lavcodec -lavformat -lavutil -lswscale))
 endif
 
 # Header dependencies

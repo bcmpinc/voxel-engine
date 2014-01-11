@@ -41,13 +41,8 @@ namespace {
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
 static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);
 
-// Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
+// Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1 (approximately).
 typedef int32_t v4si __attribute__ ((vector_size (16)));
-
-const v4si quad_permutation[8] = {
-    {},{},{},{},
-    {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
-};
 
 static const int32_t SCENE_DEPTH = 26;
 
@@ -62,6 +57,26 @@ static const v4si DELTA[8]={
     { 1, 1,-1},
     { 1, 1, 1},
 };
+
+const v4si quad_permutation[16] = {
+    {},{},{},{},
+    {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
+};
+/** Returns a 1/16th part of the given src.
+ * These are ordered:
+ * 0 1 2 3
+ * 4 5 6 7
+ * 8 9 A B
+ * C D E F
+ */
+inline static v4si get_part(v4si src, int i) {
+    static const v4si shuffle = {1,0,3,2};
+    assert(i>=0 && i<16);
+    int x=i%4, y=i/4;
+    v4si a={4-x,x+1,y+1,4-y};
+    v4si b={x,  3-x,3-y,y  };
+    return (a*src + b*__builtin_shuffle(src, shuffle)) >> 2;
+}
 
 const v4si nil = {};
 
@@ -81,7 +96,7 @@ static bool traverse(
     v4si new_bound;
     count++;
     // Recursion
-    if (depth>=0 && bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
+    if (depth>=0 && bound[1] - bound[0] <= 4<<SCENE_DEPTH) {
         // Traverse octree
         octree &s = root[octnode];
         v4si octant = -(pos<0);
@@ -106,30 +121,28 @@ static bool traverse(
         return false;
     } else {
         // Traverse quadtree 
-        for (int i = 4; i<8; i++) {
-            if (!face.map[quadnode*4+i]) continue;
-            new_bound = (bound + __builtin_shuffle(bound,quad_permutation[i])) >> 1;
-            v4si new_dx = (dx + __builtin_shuffle(dx,quad_permutation[i])) >> 1;
-            v4si new_dy = (dy + __builtin_shuffle(dy,quad_permutation[i])) >> 1;
-            v4si new_dz = (dz + __builtin_shuffle(dz,quad_permutation[i])) >> 1;
+        uint32_t val = face.map[quadnode];
+        while (val>0) {
+            int i = __builtin_ctz(val);
+            val &= val-1;
+            new_bound = get_part(bound, i);
+            v4si new_dx = get_part(dx, i);
+            v4si new_dy = get_part(dy, i);
+            v4si new_dz = get_part(dz, i);
             v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
             v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
             ltz = (new_bound - new_dltz)<0;
             gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (quadnode<(int)quadtree::L) {
-                traverse(quadnode*4+i, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
+                traverse(quadnode*16+i+1, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
                 count_quad++;
             } else {
-                face.set_face(quadnode*4+i, octcolor); // Rendering
+                face.set_face(quadnode, i, octcolor); // Rendering
             }
         }
-        if (quadnode>=0) {
-            face.compute(quadnode);
-            return !face.map[quadnode];
-        } else {
-            return face.children[0]==0;
-        }
+        face.compute(quadnode);
+        return face.map[quadnode]==0;
     }
 }
     
@@ -185,7 +198,7 @@ void octree_draw(octree_file * file) {
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
     v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
     v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
+    traverse(0, 0, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();

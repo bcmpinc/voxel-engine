@@ -21,28 +21,35 @@
 #include <stdint.h>
 #include <glm/glm.hpp>
 
+/**
+ * A quadtree like structure with 4x4 children per intermediate node (rather than 2x2).
+ */
 struct quadtree {
-    static const unsigned int dim = 10;
-    static const unsigned int N = (4<<dim<<dim)/3-1;
-    static const unsigned int M = N/4-1;
-    static const unsigned int L = M/4-1;
-    static const unsigned int SIZE = 1<<dim;
+    static const unsigned int CHILD_COUNT = 16; // Number of 'childpointers' per intermediate node.
+    static const unsigned int LAYERS = 5; // Number of layers in the tree (1 = only the rootnode).
+    static const unsigned int SIZE = 1<<(LAYERS*2); // Width of the quadtree.
+    static const unsigned int N = (CHILD_COUNT<<(LAYERS*4))/(CHILD_COUNT-1); // Number of children in the array.
+    static const unsigned int M = N/CHILD_COUNT; // Length of the array
+    static const unsigned int L = M/CHILD_COUNT; // Start of the last layer of intermediate nodes.
     
     /** 
-     * The quadtree is stored in a heap-like fashion as a single array.
-     * The child nodes of map[i] are map[4*i+1], ..., map[4*i+4].
+     * The quadtree is stored in a heap-like fashion as a single array of bitmasks.
+     * The child nodes of map[i] are map[16*i+1], ..., map[16*i+16].
+     * Root is at map[0], first layer at map[1], .., map[16], second layer starts at map[17].
      */
     union {
-        uint8_t  map[N];
-        uint32_t children[N/4];
+        uint16_t  map[M];
     };
-        
+
+    inline void set_bit(int pos)   {map[pos/CHILD_COUNT] |=   1<<(pos%CHILD_COUNT); }
+    inline void unset_bit(int pos) {map[pos/CHILD_COUNT] &= ~(1<<(pos%CHILD_COUNT));}
+
     quadtree();
     void set(int x, int y);
-    void set_face(int v, int color);
-    void compute(unsigned int i);
-    void build_fill(unsigned int i);
-    void build_check(int width, int height, unsigned int i, int size);
+    void set_face(int node, int bit, int color);
+    void compute(int i);
+    void build_fill(int i);
+    void build_check(int width, int height, int i, int size);
     void build(int width, int height);
 };
 
