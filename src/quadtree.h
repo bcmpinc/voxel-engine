@@ -46,6 +46,7 @@ struct quadtree {
 
     quadtree();
     void set(int x, int y);
+    void set_face(int pos, int color) {pos--; set_face(pos/CHILD_COUNT, pos%CHILD_COUNT, color);}
     void set_face(int node, int bit, int color);
     void compute(int i);
     void build_fill(int i);

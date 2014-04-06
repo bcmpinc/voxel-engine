@@ -31,12 +31,10 @@
 using std::max;
 using std::min;
 
-namespace {
-    quadtree face;
-    octree * root;
-    int C;
-    int count, count_oct, count_quad;
-}
+static quadtree face;
+static octree * root;
+static int C;
+static int count, count_oct, count_quad;
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
 static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);
@@ -76,7 +74,8 @@ static bool traverse(
     v4si new_bound;
     count++;
     // Recursion
-    if (depth>=0 && bound[1] - bound[0] <= 4<<SCENE_DEPTH) {
+    if (quadnode>=(int)quadtree::M || bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
+        if (depth<0) return false;
         // Traverse octree
         octree &s = root[octnode];
         v4si octant = -(pos<0);
@@ -92,7 +91,9 @@ static bool traverse(
             gtz = (new_bound - dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             count_oct++;
-            if (~octnode) {
+            if (quadnode>=(int)quadtree::M && new_bound[1] - new_bound[0] > 1<<SCENE_DEPTH) {
+                face.set_face(quadnode, octcolor); // Rendering
+            } else if (~octnode) {
                 if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
             } else {
                 if (traverse(quadnode, ~0u, octcolor, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
@@ -124,12 +125,8 @@ static bool traverse(
             ltz = (new_bound - new_dltz)<0;
             gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            if (quadnode<(int)quadtree::L) {
-                traverse(quadnode*16+i+1, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
-                count_quad++;
-            } else {
-                face.set_face(quadnode, i, octcolor); // Rendering
-            }
+            count_quad++;
+            traverse(quadnode*16+i+1, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
         }
         face.compute(quadnode);
         return face.map[quadnode]==0;
@@ -150,7 +147,6 @@ void octree_draw(octree_file * file) {
     
     double timer_prepare;
     double timer_query;
-    double timer_transfer;
     
     root = file->root;
     
@@ -190,17 +186,9 @@ void octree_draw(octree_file * file) {
     v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
     traverse(0, 0, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
     
-    
     timer_query = t_query.elapsed();
-
-    Timer t_transfer;
-    
-    // Send the image data to OpenGL.
-    // glTexImage2D( cubetargets[i], 0, 4, quadtree::SIZE, quadtree::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
-    
-    timer_transfer = t_transfer.elapsed();
             
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f | Count:%10d Oct:%10d Quad:%10d\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer, count, count_oct, count_quad);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f | Count:%8d Oct:%8d Quad:%7d\n", t_global.elapsed(), timer_prepare, timer_query, count, count_oct, count_quad);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
