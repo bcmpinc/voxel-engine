@@ -32,8 +32,9 @@
  * 
  */
 struct octree {
-    uint32_t child[8];
-    int32_t avgcolor[8];
+    uint32_t bitmask: 8;
+    uint32_t color  :24;
+    uint32_t child[0];
 };
 
 struct octree_file {
@@ -41,7 +42,9 @@ struct octree_file {
     uint32_t size;
     int32_t fd;
     octree * root;
+    /** Maps the given octree file to memory for reading and rendering. */
     octree_file(const char * filename);
+    /** Creates an octree file with the given name and size for writing. */
     octree_file(const char * filename, uint32_t size);
     ~octree_file();
 private:
