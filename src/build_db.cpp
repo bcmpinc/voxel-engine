@@ -125,24 +125,39 @@ bool hilbert3d_compare( const point & p1,const point & p2 ) {
 
 #define CLAMP(x,l,u) (x<l?l:x>u?u:x)
 uint32_t rgb(int32_t r, int32_t g, int32_t b) {
-  return CLAMP(r,0,255)<<16|CLAMP(g,0,255)<<8|CLAMP(b,0,255);
+  return (CLAMP(r,0,255)<<16)|(CLAMP(g,0,255)<<8)|(CLAMP(b,0,255));
 }
-uint32_t rgb(float r, float g, float b) {
+uint32_t rgb(double r, double g, double b) {
   return rgb((int32_t)(r+0.5),(int32_t)(g+0.5),(int32_t)(b+0.5));
 }
 
-uint32_t average(octree* root, int index) {
-  octree &node = root[index];
-  int n = __builtin_popcountl(node.bitmask);
-  float r=0, g=0, b=0;
-  for (int i=0; i<n; i++) {
-    int v = node.is_pointer(i) ? average(root, node.child[i]) : node.color(i);
-      r += (v&0xff0000)>>16;
-      g += (v&0xff00)>>8;
-      b += (v&0xff);
+struct weighted_color {
+  double r,g,b;
+  uint64_t n;
+  weighted_color() : r(0), g(0), b(0), n(0) {}
+  weighted_color(uint32_t v) : r((v&0xff0000)>>16), g((v&0xff00)>>8), b((v&0xff)), n(1) {}
+  void operator+=(const weighted_color &w) {
+    r+=w.r;
+    g+=w.g;
+    b+=w.b;
+    n+=w.n;
   }
-  node.avgcolor = rgb(r/n,g/n,b/n);
-  return node.avgcolor;
+  uint32_t color() {
+    assert(n>0);
+    return rgb(r/n,g/n,b/n);
+  }
+};
+weighted_color average(octree* root, int index) {
+  octree &node = root[index];
+  int n = node.size();
+  if (n==0) printf("Err: %d\n", index);
+  assert(n>0);
+  weighted_color c;
+  for (int i=0; i<n; i++) {
+    c += node.is_pointer(i) ? average(root, node.child[i]) : weighted_color(node.color(i));
+  }
+  node.avgcolor = c.color();
+  return c;
 }
 
 /*void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
@@ -345,6 +360,7 @@ void write_points(octree* root, const pointset &in, const layer_info &layers, co
   }
   // Create rootnode
   root[0].bitmask = 0;
+  root[0].avgcolor = 0xeeeeee;
   location[layers.top_repeat_layer]++;
   bytes_written += 4;
   // Process file.
@@ -381,14 +397,16 @@ void write_points(octree* root, const pointset &in, const layer_info &layers, co
           assert(location[depth+1]<file.layer_end[depth+1]);
           assert(location[depth]<file.layer_end[depth]);
           assert(bytes_written<file.filesize);
+          // Get location for new node.
+          uint32_t next = location[depth];
           // Assign bytes to the new node.
           location[depth+1]++; // Create entry in this layer
           location[depth]++; // Create node in lower layer
           bytes_written += 8;
           // Initialize new node.
-          uint32_t next = location[depth];
           //printf("Created node %d (%ldB)\n", next, bytes_written);
           root[next].bitmask = 0;
+          root[next].avgcolor = 0xeeeeee;
           cur->child[pos] = next;
         }
         assert(cur->child[pos]<file.layer_end[depth]);
@@ -417,10 +435,10 @@ int main(int argc, char ** argv){
   
   write_points(out.root, in, layers, file);
   
-  /*
   printf("[%10.0f] Computing average colors.\n", t.elapsed());
-  average(root, 0);
+  average(out.root, 0);
   
+  /*
   printf("[%10.0f] Replicating model.\n", t.elapsed());
   replicate(root, 0, repeat_mask, repeat_depth);
   */
