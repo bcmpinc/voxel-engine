@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,23 @@
 
 // For outputing the elapsed time.
 static Timer t;
+
+struct human_filesize {
+  uint64_t number;
+  const char * suffix;
+  human_filesize(uint64_t size) {
+    if (size >= (10<<20)) { 
+      number = size >> 20; 
+      suffix = "Mi"; 
+    } else if (size >= (10<<10)) { 
+      number = size >> 10; 
+      suffix = "ki"; 
+    } else { 
+      number = size;
+      suffix = ""; 
+    }
+  }
+};
 
 /** Maximum allowed depth of octree
  * Note that the sorting procedure has a bound of 21 layers,
@@ -119,13 +136,13 @@ uint32_t average(octree* root, int index) {
   int n = __builtin_popcountl(node.bitmask);
   float r=0, g=0, b=0;
   for (int i=0; i<n; i++) {
-    int v = average(root, node.child[i]);
+    int v = node.is_pointer(i) ? average(root, node.child[i]) : node.color(i);
       r += (v&0xff0000)>>16;
       g += (v&0xff00)>>8;
       b += (v&0xff);
   }
-  node.color = rgb(r/n,g/n,b/n);
-  return node.color;
+  node.avgcolor = rgb(r/n,g/n,b/n);
+  return node.avgcolor;
 }
 
 /*void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
@@ -166,7 +183,7 @@ arguments parse_arguments(int argc, char ** argv) {
   r.outfile = argv[ARG_OUTFILE];
   time_t rawtime = std::time(NULL);
   std::tm * timeinfo = std::localtime(&rawtime);
-  printf("[%10.0f] Conversion of pointfile %s into octree %s started at %d:%2d:%2d.\n", t.elapsed(), r.infile, r.outfile, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+  printf("[%10.0f] Conversion of pointfile %s into octree %s started at %d:%02d:%02d.\n", t.elapsed(), r.infile, r.outfile, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 
   // Determine repeat arguments
   if (argc == 5) {
@@ -279,6 +296,7 @@ layer_info count_nodes_per_layer(const arguments &arg, const pointset &in) {
       printf("[%10.0f] At layer %2d: %8lu pruned nodes.\n", t.elapsed(), i, r.nodecount[i]);
     }
   }
+  // r.bottom_layer++;
   
   return r;
 }
@@ -303,7 +321,7 @@ file_info compute_file_structure(const layer_info &layers) {
   // Repeated & top layers get room for the bitmask/color and 8 children.
   // Note: layers.nodecount[layers.top_data_layer]==1.
   for (int i=layers.top_repeat_layer; i>=layers.top_data_layer; i--) {
-    r.layer_start[i] = i*9;
+    r.layer_start[i] = r.layer_end[i+1];
     r.layer_end[i] = r.layer_start[i] + 9;
   }
   // Intermediate layers get room for that layers bitmasks/colors and for the pointers to the next layer.
@@ -311,57 +329,75 @@ file_info compute_file_structure(const layer_info &layers) {
     r.layer_start[i] = r.layer_end[i+1];
     r.layer_end[i] = r.layer_start[i] + layers.nodecount[i] + layers.nodecount[i-1]; 
   } 
-  // Leaf layers get room for each leaf node's color.
-  r.layer_start[layers.bottom_layer] = r.layer_end[layers.bottom_layer+1];
-  r.layer_end[layers.bottom_layer] = r.layer_start[layers.bottom_layer] + layers.nodecount[layers.bottom_layer];
-  r.filesize = r.layer_end[layers.bottom_layer] * sizeof(octree);
+  // Leaf layer is stored in the parent layer.
+  r.filesize = r.layer_end[layers.bottom_layer+1] * sizeof(octree);
+  //for (int j=0; j<D; j++) {printf("Layer %d: %d-%d\n", j, r.layer_start[j], r.layer_end[j]);}
   return r;
 }
-/*
+
 void write_points(octree* root, const pointset &in, const layer_info &layers, const file_info &file) {
   // Read voxels and store them.
   printf("[%10.0f] Storing points.\n", t.elapsed());
-  root[0].bitmask = 0;  
   uint64_t bytes_written = 0;
-  uint32_t location[D];
+  uint32_t location[D]; //< Writing location for data of each layer.
   for (uint32_t i=0; i<D; i++) {
-    location[i]=file.layer_start[i];
+    location[i] = file.layer_start[i];
   }
+  // Create rootnode
+  root[0].bitmask = 0;
+  location[layers.top_repeat_layer]++;
+  bytes_written += 4;
+  // Process file.
   for (uint32_t i=0; i<in.length; i++) {
-    if (i && (i&0x3fffff)==0) printf("[%10.0f] Stored %6.2f%% points (%luMiB).\n", t.elapsed(), i*100.0/in.length, bytes_written>>20);
+    // Periodically print some progress info every 4MiPoints.
+    if (i && (i&0x3fffff)==0) {
+      human_filesize bytes(bytes_written);
+      printf("[%10.0f] Stored %6.2f%% points (%lu%sB).\n", t.elapsed(), i*100.0/in.length, bytes.number, bytes.suffix);
+    }
+    // Proces the next point.
     point p(in.list[i]);
     uint64_t val = morton3d(p.z, p.y, p.x);
     octree * cur = root;
-    //fprintf(stderr,"val=%15lx, p{x=%d,y=%d,x=%d,c=%6x.\n", val, p.x, p.y, p.z, p.c);
-    for (int depth = layers.top_repeat_layer; depth >= layers.bottom_layer; depth--) {
-      int idx = (val >> depth*3)&7;
-      //fprintf(stderr,"i=%u, depth=%d, idx=%d, offset[depth]=%u, cur=%ld.\n", i, depth, idx, offset[depth], cur-root);
-      if (depth<=layers.bottom_layer) {
-        // Bottom layer has no child pointers. Their bitmask is 0.
-        cur->color = p.c;
+    //printf("val=%15lx, p{x=%d,y=%d,z=%d,c=%6x}.\n", val, p.x, p.y, p.z, p.c);
+    for (int depth = layers.top_repeat_layer-1; depth >= layers.bottom_layer; depth--) {
+      // Extract the child index for the current layer based from the morton code.
+      uint32_t index = (val >> depth*3)&7;
+      uint32_t pos = cur->insert_index(index);
+      //printf("i=%u, depth=%d, index=%d, pos=%d, location[depth]=%u, cur=%ld.\n", i, depth, index, pos, location[depth+1], cur-root);
+      
+      if (depth <= layers.bottom_layer) {
+        if (cur->child[pos] == 0) {
+          assert(location[depth+1]<file.layer_end[depth+1]);
+          location[depth+1]++; // Create entry in this layer
+          bytes_written += 4;
+        }
+        // Bottom layer stores child colors instead of child pointers.
+        cur->set_color(pos, p.c);
+        //printf("Created leaf (%ldB)\n", bytes_written);
       } else {
         // Check if we need to create a new node.
-        if ((cur->bitmask & (1<<idx))==0) {
-          assert(bytes_written<file.filesize);
+        if (cur->child[pos] == 0) {
+          // Is there still sufficient bytes left?
+          assert(location[depth+1]<file.layer_end[depth+1]);
           assert(location[depth]<file.layer_end[depth]);
-          bytes_written+=8;
-          location[depth]+=__builtin_popcount(root[location[depth]].bitmask)+1;
+          assert(bytes_written<file.filesize);
+          // Assign bytes to the new node.
+          location[depth+1]++; // Create entry in this layer
+          location[depth]++; // Create node in lower layer
+          bytes_written += 8;
+          // Initialize new node.
           uint32_t next = location[depth];
-          //fprintf(stderr,"Created node %d (%d)\n", next, nodes_created);
+          //printf("Created node %d (%ldB)\n", next, bytes_written);
           root[next].bitmask = 0;
-          // Make room
-          int pre_cnt = __builtin_popcount(((1<<idx)-1) & cur->bitmask);
-          int post_cnt = __builtin_popcount(((1<<8)-(1<<idx)) & cur->bitmask);
-          memmove(cur+pre_cnt+2,cur+pre_cnt+1,post_cnt*sizeof(octree));
-          cur->child[pre_cnt+1] = next;
+          cur->child[pos] = next;
         }
-        assert(cur->child[idx]<nodesum);
-        cur = &root[cur->child[idx]];
+        assert(cur->child[pos]<file.layer_end[depth]);
+        cur = &root[cur->child[pos]];
       }
     }
   }
 }
-*/
+
 int main(int argc, char ** argv){ 
   arguments arg = parse_arguments(argc, argv);
   
@@ -375,11 +411,8 @@ int main(int argc, char ** argv){
   file_info file = compute_file_structure(layers);
   
   // Prepare output file and map it to memory
-  const char * suffix;
-  if (file.filesize >= (10<<20)) { file.filesize >>= 20; suffix = "Mi"; }
-  else if (file.filesize >= (10<<10)) { file.filesize >>= 10; suffix = "ki"; }
-  else { suffix = ""; }
-  printf("[%10.0f] Creating octree file (%lu%sB).\n", t.elapsed(), file.filesize, suffix);
+  human_filesize size(file.filesize);
+  printf("[%10.0f] Creating octree file (%lu%sB).\n", t.elapsed(), size.number, size.suffix);
   octree_file out(arg.outfile, file.filesize);
   
   write_points(out.root, in, layers, file);

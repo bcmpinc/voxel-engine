@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,9 +32,30 @@
  * 
  */
 struct octree {
-    uint32_t bitmask: 8;
-    uint32_t color  :24;
+    uint32_t bitmask : 8;
+    uint32_t avgcolor:24;
     uint32_t child[0];
+    /** Checks if a given position in the child array is a pointer. */
+    bool is_pointer(int pos) const { return (child[pos] & 0xff000000u) == 0; }
+    /** Returns the color of a given position in the child array (assuming it is not a pointer). */
+    uint32_t color(int pos) const { return child[pos] & 0x00ffffffu; }
+    /** Converts an index (0-7) into a position in the child array, assuming it is in the child array. */
+    uint32_t position(int index) const { return __builtin_popcount(bitmask & ((1<<index) - 1)); }
+    /** Checks whether a certain index is in the child array. */
+    bool has_index(int index) const { return bitmask & (1<<index); }
+    /** Makes room for the given index in the child array, and returns its position. */
+    uint32_t insert_index(int index) {
+        uint32_t pos = position(index);
+        if (has_index(index)) return pos;
+        uint32_t child_length = __builtin_popcount(bitmask);
+        for (uint32_t i = child_length + 1; i > pos; i--) {
+            child[i] = child[i-1];
+        }
+        bitmask |= (1<<index);
+        child[pos] = 0;
+        return pos;
+    }
+    void set_color(int pos, uint32_t color) { child[pos] = color | 0xff000000u; }
 };
 
 struct octree_file {
