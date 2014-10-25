@@ -160,16 +160,18 @@ weighted_color average(octree* root, int index) {
   return c;
 }
 
-/*void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
-    if (depth<=0) return;
-    for (uint32_t i=0; i<8; i++) {
-        if (i == (i&mask)) {
-            if (~root[index].child[i]) replicate(root, root[index].child[i], mask, depth-1);
-        } else {
-            root.child[i]=root.child[i&mask];
-        }
+static uint32_t mask2bitmask[]={0x01,0x03,0x05,0x0f,0x11,0x33,0x55,0xff};
+void replicate(octree* root, int index, uint32_t mask, uint32_t depth) {
+  mask = mask2bitmask[mask];
+  for (uint32_t i=0; i<depth; i++) {
+    octree &node = root[index];
+    node.bitmask = mask;
+    for (uint32_t i=1; i<8; i++) {
+      node.child[i] = node.child[0];
     }
-}*/
+    index = node.child[0];
+  }
+}
 
 struct arguments {
   const char * infile;
@@ -438,10 +440,9 @@ int main(int argc, char ** argv){
   printf("[%10.0f] Computing average colors.\n", t.elapsed());
   average(out.root, 0);
   
-  /*
   printf("[%10.0f] Replicating model.\n", t.elapsed());
-  replicate(root, 0, repeat_mask, repeat_depth);
-  */
+  replicate(out.root, 0, arg.repeat_mask, arg.repeat_depth);
+
   // Done with conversion, clean up.
   printf("[%10.0f] Done.\n", t.elapsed());
 }
