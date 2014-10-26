@@ -36,7 +36,7 @@ struct octree {
     uint32_t bitmask : 8;
     uint32_t child[0];
     /** Checks if a given position in the child array is a pointer. */
-    bool is_pointer(int pos) const { return (child[pos] & 0xff000000u) == 0; }
+    bool is_pointer(int pos) const { return child[pos] < 0xff000000u; }
     /** Returns the color of a given position in the child array (assuming it is not a pointer). */
     uint32_t color(int pos) const { return child[pos] & 0x00ffffffu; }
     /** Converts an index (0-7) into a position in the child array, assuming it is in the child array. */

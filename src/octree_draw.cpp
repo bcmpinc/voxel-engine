@@ -34,7 +34,7 @@ using std::min;
 namespace {
     quadtree face;
     octree * root;
-    int C;
+    int C; //< The corner that is furthest away from the camera.
     int count, count_oct, count_quad;
 }
 
@@ -67,12 +67,13 @@ const v4si nil = {};
 
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
- * The bounds array is ordered as DELTA.
- * C is the corner that is furthest away from the camera.
+ * The bound parameter is the quadnode projected on the plane containing the furthest corner of the octree node.
+ * The dx,dy,dz values represent how this projection changes when traversing an edge to one of the other corners.
  * Furthermore, pos is the location of the center of the octree node, relative to the viewer in octree space.
+ * For leaf nodes (and their 'childs') octnode will be a color and >= 0xff000000u.
  */
 static bool traverse(
-    const int32_t quadnode, const uint32_t octnode, const uint32_t octcolor, 
+    const int32_t quadnode, const uint32_t octnode,
     const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dltz, const v4si dgtz,
     const v4si pos, const int depth
 ){    
@@ -82,25 +83,39 @@ static bool traverse(
     count++;
     // Recursion
     if (depth>=0 && bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
-        // Traverse octree
-        octree &s = root[octnode];
-        v4si octant = -(pos<0);
-        int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
-        for (int k = 0; k<8; k++) {
-            int i = furthest^k;
-            if (~octnode && s.avgcolor[i]<0) continue;
-            new_bound = bound<<1;
-            if ((C^i)&DX) new_bound += dx;
-            if ((C^i)&DY) new_bound += dy;
-            if ((C^i)&DZ) new_bound += dz;
-            ltz = (new_bound - dltz)<0;
-            gtz = (new_bound - dgtz)>0;
-            if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            count_oct++;
-            if (~octnode) {
-                if (traverse(quadnode, s.child[i], s.avgcolor[i], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
-            } else {
-                if (traverse(quadnode, ~0u, octcolor, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
+        if (octnode < 0xff000000) {
+            // Traverse octree
+            v4si octant = -(pos<0);
+            int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
+            for (int k = 0; k<8; k++) {
+                int i = furthest^k;
+                if (!root[octnode].has_index(i)) continue;
+                int j = root[octnode].position(i);
+                new_bound = bound<<1;
+                if ((C^i)&DX) new_bound += dx;
+                if ((C^i)&DY) new_bound += dy;
+                if ((C^i)&DZ) new_bound += dz;
+                ltz = (new_bound - dltz)<0;
+                gtz = (new_bound - dgtz)>0;
+                if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                count_oct++;
+                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
+            }
+        } else {
+            // Duplicate leaf node
+            v4si octant = -(pos<0);
+            int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
+            for (int k = 0; k<7; k++) {
+                int i = furthest^k;
+                new_bound = bound<<1;
+                if ((C^i)&DX) new_bound += dx;
+                if ((C^i)&DY) new_bound += dy;
+                if ((C^i)&DZ) new_bound += dz;
+                ltz = (new_bound - dltz)<0;
+                gtz = (new_bound - dgtz)>0;
+                if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                count_oct++;
+                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
             }
         }
         return false;
@@ -118,10 +133,12 @@ static bool traverse(
             gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (quadnode<(int)quadtree::L) {
-                traverse(quadnode*4+i, octnode, octcolor, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
+                traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
                 count_quad++;
+            } else if (octnode < 0xff000000u) {
+                face.set_face(quadnode*4+i, root[octnode].avgcolor); // Rendering
             } else {
-                face.set_face(quadnode*4+i, octcolor); // Rendering
+                face.set_face(quadnode*4+i, octnode); // Rendering
             }
         }
         if (quadnode>=0) {
@@ -185,7 +202,7 @@ void octree_draw(octree_file * file) {
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
     v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
     v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
+    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();

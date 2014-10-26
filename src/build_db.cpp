@@ -135,7 +135,11 @@ struct weighted_color {
   double r,g,b;
   uint64_t n;
   weighted_color() : r(0), g(0), b(0), n(0) {}
-  weighted_color(uint32_t v) : r((v&0xff0000)>>16), g((v&0xff00)>>8), b((v&0xff)), n(1) {}
+  weighted_color(uint32_t v) : r((v&0xff0000)>>16), g((v&0xff00)>>8), b((v&0xff)), n(1) {
+    assert(0<=r && r<=255);
+    assert(0<=g && g<=255);
+    assert(0<=b && b<=255);
+  }
   void operator+=(const weighted_color &w) {
     r+=w.r;
     g+=w.g;
@@ -144,13 +148,16 @@ struct weighted_color {
   }
   uint32_t color() {
     assert(n>0);
+    assert(0<=r && r<=255.*n);
+    assert(0<=g && g<=255.*n);
+    assert(0<=b && b<=255.*n);
     return rgb(r/n,g/n,b/n);
   }
 };
-weighted_color average(octree* root, int index) {
+// Note: recursive function, assumes that the octree is indeed a tree.
+weighted_color average(octree* root, uint32_t index) {
   octree &node = root[index];
   int n = node.size();
-  if (n==0) printf("Err: %d\n", index);
   assert(n>0);
   weighted_color c;
   for (int i=0; i<n; i++) {
