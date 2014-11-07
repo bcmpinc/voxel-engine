@@ -32,19 +32,18 @@ Execution
 ---------
 After compilation, the **Voxel-Engine** program is executed by:
 
-    ./voxel model
+    ./voxel vxl/sign.oc2
 
-The model argument specifies which `.oct` file in the `vxl/` directory will be loaded. 
-The name must be specified without `.oct`, for example: `./voxel sign`.
+Which opens the example `sing.oc2` model in the `vxl` directory.
 
 Tools
 -----
 
-    ./build_db pointset [mask repeats]
+    ./build_db vxl/pointset.vxl vxl/model.oc2 [mask repeats]
 
-Converts the given model, stored as `vxl/pointset.vxl` into octree format. 
-This process contains a sorting step that reorders the points in the original file.
-The output, `vxl/pointset.oct` can be loaded into the renderer by running `./pointset model`. 
+Converts the `vxl/pointset.vxl` pointset and saves it to `vxl/model.oc2` in octree format. 
+This process contains a sorting step that reorders the points in the original pointset file.
+The output, `vxl/model.oc2` can be loaded into the renderer by running `./voxel vxl/model.oc2`. 
 
 The repeat argument can be used to create a model consisting of `2^repeats` copies of the model in the X, Y and Z directions.
 The directions in which the model are repeated can be limited using the mask, which is a bitwise -or combination of X=4, Y=2 and Z=1. 
@@ -55,10 +54,6 @@ The model will not be copied into the specified directions.
 Converts a `.vxl.txt` file, which is in ASCII format into a `.vxl` file that is in binary format.
 The file pointset must reside in `vxl/` and be specified without its extension.
 A backup is created of the original file.
-
-    ./cubemap
-    
-This is a small testing program, which renders a cubemap loaded from `img/cubemap#.png` with `#` ranging from 0 to 5.
 
     ./convert lidar-ascii-file
     
@@ -88,7 +83,7 @@ The numbers are space separated.
 The binary `.vxl` file stores one point per 32 bytes. 
 The structure of a point is given in `pointset.h`.
 
-The binary `.oct` file stores an octree containing a model. 
+The binary `.oc2` file stores an octree containing a model. 
 It is a list of octree nodes, with the first one being the root.
 Its structure is given in `octree.h`.
 
