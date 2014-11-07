@@ -8,13 +8,11 @@
 using glm::min;
 using glm::max;
 
-namespace {
-  // The screen surface
-  SDL_Surface *screen = NULL;
-  
-  // pointer to the pixels (32 bit)
-  int * pixs;
-}
+// The screen surface
+static SDL_Surface *screen = NULL;
+
+// pointer to the pixels (32 bit)
+static int * pixs;
 
 void init_screen(const char * caption) {
     // Initialize SDL 

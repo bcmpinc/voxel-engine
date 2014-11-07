@@ -32,17 +32,15 @@ class button {
     };
 };
 
-namespace {
-    glm::dmat4 view;
-      
-    // Quiting?
-    bool button_state[button::STATES];
-    bool mousemove=false;
+static glm::dmat4 view;
+    
+// Quiting?
+static bool button_state[button::STATES];
+static bool mousemove=false;
 
-    // Position
-    const double rotatespeed = -0.3, movespeed = 1<<17;  
-    const int MILLISECONDS_PER_FRAME = 33;
-}
+// Position
+static const double rotatespeed = -0.3, movespeed = 1<<17;  
+static const int MILLISECONDS_PER_FRAME = 33;
 
 bool quit  = false;
 bool moves = true;

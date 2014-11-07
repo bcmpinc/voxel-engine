@@ -31,12 +31,10 @@
 using std::max;
 using std::min;
 
-namespace {
-    quadtree face;
-    octree * root;
-    int C; //< The corner that is furthest away from the camera.
-    int count, count_oct, count_quad;
-}
+static quadtree face;
+static octree * root;
+static int C; //< The corner that is furthest away from the camera.
+static int count, count_oct, count_quad;
 
 static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
 static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);

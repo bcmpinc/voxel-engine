@@ -39,18 +39,16 @@ extern "C" {
 
 #include "art.h"
 
-namespace {
-    AVFormatContext *oc;
-    AVStream *video_st;
-    AVFrame *picture;
-    int video_outbuf_size;
-    unsigned char *video_outbuf;
-    SwsContext *img_convert_ctx;
-    int frame_count;
-    AVCodecContext * c;
-    GLuint pfbo, prbo;
-    unsigned char * buffer;
-};
+static AVFormatContext *oc;
+static AVStream *video_st;
+static AVFrame *picture;
+static int video_outbuf_size;
+static unsigned char *video_outbuf;
+static SwsContext *img_convert_ctx;
+static int frame_count;
+static AVCodecContext * c;
+static GLuint pfbo, prbo;
+static unsigned char * buffer;
 
 bool checkFramebufferStatus()
 {

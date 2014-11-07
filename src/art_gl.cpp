@@ -37,15 +37,13 @@
 using glm::min;
 using glm::max;
 
-namespace {
-    // The screen surface
-    SDL_Surface *screen = NULL;
-    /** The projection matrix.
-     * Note that we use a left handed axis system, hence we are initially looking down the positive Z-axis.
-     * Up is positive Y and right is positive X.
-     */
-    const glm::dmat4 frustum_matrix = glm::scale(glm::frustum<double>(frustum::left, frustum::right, frustum::bottom, frustum::top, frustum::near, frustum::far),glm::dvec3(1,1,-1));
-}
+// The screen surface
+static SDL_Surface *screen = NULL;
+/** The projection matrix.
+    * Note that we use a left handed axis system, hence we are initially looking down the positive Z-axis.
+    * Up is positive Y and right is positive X.
+    */
+static const glm::dmat4 frustum_matrix = glm::scale(glm::frustum<double>(frustum::left, frustum::right, frustum::bottom, frustum::top, frustum::near, frustum::far),glm::dvec3(1,1,-1));
 
 void init_screen(const char * caption) {
     // Initialize SDL 
