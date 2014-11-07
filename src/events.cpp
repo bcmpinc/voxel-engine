@@ -16,6 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
 #include <SDL/SDL.h>
 
@@ -39,7 +40,7 @@ static bool button_state[button::STATES];
 static bool mousemove=false;
 
 // Position
-static const double rotatespeed = -0.3, movespeed = 1<<17;  
+static const double rotatespeed = -0.005, movespeed = 1<<17;
 static const int MILLISECONDS_PER_FRAME = 33;
 
 bool quit  = false;
