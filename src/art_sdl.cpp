@@ -1,6 +1,8 @@
 #include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <png.h>
+
+#ifdef FOUND_PNG
+# include <png.h>
+#endif
 
 #include "events.h"
 #include "art.h"
@@ -160,6 +162,7 @@ void draw_box() {
     }
 }
 
+#ifdef FOUND_PNG
 void export_png(const char * out) {
     png_bytep row_pointers[SCREEN_HEIGHT];
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -177,4 +180,4 @@ void export_png(const char * out) {
     }
     png_destroy_write_struct(&png_ptr, &info_ptr);
 }
-//#endif
+#endif
