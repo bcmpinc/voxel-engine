@@ -75,7 +75,10 @@ pointfile::pointfile(const char* filename) {
 }
 
 pointfile::~pointfile() {
-    write(fd, buffer, cnt * sizeof(point));
+    ssize_t r = write(fd, buffer, cnt * sizeof(point));
+    if (r!=cnt * (ssize_t)sizeof(point)) {
+        perror("Error while writing to pointfile"); exit(1);
+    }
     free(buffer);
     if (fd!=-1)
         close(fd);
@@ -85,7 +88,10 @@ void pointfile::add(const point& p) {
     buffer[cnt] = p;
     cnt++;
     if (cnt >= point_buffer_size) {
-        write(fd, buffer, point_buffer_size * sizeof(point));
+        ssize_t r = write(fd, buffer, point_buffer_size * sizeof(point));
+        if (r!=point_buffer_size * (ssize_t)sizeof(point)) {
+            perror("Error while writing to pointfile"); exit(1);
+        }
         cnt = 0;
     }
 }
