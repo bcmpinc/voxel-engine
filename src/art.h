@@ -31,8 +31,13 @@
 # define SCREEN_HEIGHT    768
 #endif
 
+#ifdef IN_IDE_PARSER // Let the kdevelop ide parser think that these are defined.
+# define FOUND_PNG
+# define FOUND_LIBAV
+#endif
+
 void init_screen(const char * caption);
-void clear_creen();
+void clear_screen();
 void flip_screen();
 
 void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
@@ -40,10 +45,14 @@ void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
 void export_png(const char * out); // SDL (Software) + libpng
 #endif
 void draw_box();
-void draw_cubemap(uint32_t texture); // OpenGL
 
-uint32_t load_texture(const char* filename); // OpenGL
-uint32_t load_cubemap(const char* format); // OpenGL
+// void draw_cubemap(uint32_t texture); // OpenGL
+// uint32_t load_texture(const char* filename); // OpenGL
+// uint32_t load_cubemap(const char* format); // OpenGL
+
+#ifdef FOUND_LIBAV
+class Capture capture_screen(const char* name);
+#endif
 
 namespace frustum {
     // Compute frustum parameters.

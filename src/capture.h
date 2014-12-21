@@ -21,8 +21,16 @@
 #define CAPTURE_H
 #include <stdint.h>
 
-void capture_start(const char * filename);
-void capture_shoot(uint32_t cubemap);
-void capture_end();
+class Capture {
+    struct CaptureData * data;
+public:
+    Capture() : data(nullptr) {}
+    Capture(const char * filename, uint8_t * data, int width, int height);
+    Capture(Capture&& other) : data(other.data) { other.data=nullptr; }
+    void operator=(Capture&& other) { end(); data=other.data; other.data=nullptr; }
+    ~Capture();
+    void shoot();
+    void end();
+};
 
 #endif // CAPTURE_H

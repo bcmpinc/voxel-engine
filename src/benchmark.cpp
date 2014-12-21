@@ -88,7 +88,7 @@ int main(int argc, char ** argv) {
         double times[N];
         for (int j=-1; j<N; j++) {
             Timer t;
-            clear_creen();
+            clear_screen();
             octree_draw(&in);
             flip_screen();
             if (j>=0) {
@@ -113,12 +113,14 @@ int main(int argc, char ** argv) {
         printf(" | %7.2f\n", results[i]);
         fflush(stdout);
         
+#ifdef FOUND_PNG
         // Output png
         if (argc>=2) {
             char outfile[64];
             sprintf(outfile, "bshots/%.10s-%02d-%s.png", argv[1], i, scene[i].filename);
             export_png(outfile);
         }
+#endif
     }
 
     printf("\nBenchmark results:");

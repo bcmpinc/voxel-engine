@@ -22,36 +22,62 @@
 #include <cassert>
 #include <algorithm>
 #include <cstring>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "timing.h"
 #include "events.h"
 #include "art.h"
 #include "octree.h"
+#include "capture.h"
 
 using namespace std;
 
 
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr,"Usage: %s octree_file\n", argv[0]);
+    bool capture = false;
+    const char * filename = nullptr;
+    for (int i=1; i<argc; i++) { 
+        if (argv[i][0]=='-') {
+            if (strcmp(argv[i], "-capture") == 0) {
+                capture = true;
+            } else {
+                fprintf(stderr,"unrecognized option: %s\n", argv[i]);
+            }
+        } else {
+            if (filename) goto usage;
+            filename = argv[i];
+        }
+    }
+    if (filename == nullptr) {
+        usage:
+        fprintf(stderr,"Usage: %s [-capture] octree_file\n", argv[0]);
         exit(2);
     }
 
     // Determine the file names.
-    const char * filename = argv[1];
     octree_file in(filename);
 
     init_screen("Voxel renderer");
     position = glm::dvec3(0, 0, 0);
-    
+#ifdef FOUND_LIBAV
+    Capture c;
+    if (capture) {
+        char capturefile[32];
+        mkdir("capture",0755);
+        sprintf(capturefile, "capture/cap%08d.mp4", getpid());
+        c = capture_screen(capturefile);
+    }
+#endif    
     // mainloop
     while (!quit) {
         Timer t;
         if (moves) {
-            clear_creen();
+            clear_screen();
             octree_draw(&in);
             //draw_box();
+            c.shoot();
             flip_screen();
             
             if (false) {
@@ -67,7 +93,6 @@ int main(int argc, char *argv[]) {
         next_frame(t.elapsed());
         handle_events();
     }
-    
     return 0;
 }
 

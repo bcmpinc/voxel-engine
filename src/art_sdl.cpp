@@ -1,9 +1,5 @@
 #include <SDL/SDL.h>
 
-#ifdef FOUND_PNG
-# include <png.h>
-#endif
-
 #include "events.h"
 #include "art.h"
 
@@ -40,7 +36,7 @@ void init_screen(const char * caption) {
     pixs=(int*)screen->pixels;  
 }
 
-void clear_creen() {
+void clear_screen() {
     SDL_FillRect(screen,NULL,0xaaccff);
 }
 
@@ -163,6 +159,7 @@ void draw_box() {
 }
 
 #ifdef FOUND_PNG
+# include <png.h>
 void export_png(const char * out) {
     png_bytep row_pointers[SCREEN_HEIGHT];
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -179,5 +176,12 @@ void export_png(const char * out) {
         fclose(fp);
     }
     png_destroy_write_struct(&png_ptr, &info_ptr);
+}
+#endif
+
+#ifdef FOUND_LIBAV
+# include "capture.h"
+class Capture capture_screen(const char* name) {
+    return Capture(name, (uint8_t*)pixs, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 #endif
