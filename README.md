@@ -20,7 +20,7 @@ Furthermore it uses the following libraries:
  - SDL (required for the viewer)
  - libpng (allows the benchmark tool to export the images)
  - SDL_Image (for the heightmap converter)
- - ffmpeg (allows the viewer to save a movie, note that *libav* likely won't work, use -DLIBAV_ROOT_DIR=/path/to/ffmpeg)
+ - ffmpeg (allows the viewer to save a movie, note that *libav* likely won't work)
  
 The **Voxel-Engine** itself does not use SDL_Image, but this library is used by some of the
 tools accompanying the program.
