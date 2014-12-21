@@ -98,7 +98,8 @@ add_target(benchmark SOURCE
     src/benchmark.cpp
     src/events.cpp
     src/art_sdl.cpp
-    REQUIRED SDL PNG
+    REQUIRED SDL
+    OPTIONAL PNG
 )
 
 add_target(convert SOURCE src/convert.cpp)

@@ -27,6 +27,7 @@
 #include <string>
 
 #include <png.h>
+#include <sys/stat.h>
 
 #include "timing.h"
 #include "events.h"
@@ -68,7 +69,12 @@ double results[scenes];
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char ** argv) {
     init_screen("Voxel renderer - benchmark");
-    
+#ifdef FOUND_PNG
+    if (argc>=2) {
+        mkdir("bshots",0755);
+    }
+#endif
+
     // mainloop
     for (int i=0; i<scenes; i++) {
         // Check for quit
@@ -76,8 +82,8 @@ int main(int argc, char ** argv) {
         if (quit) return 1;
         
         // Load file
-        char infile[32];
-        sprintf(infile, "vxl/%s.oc2", scene[i].filename);
+        char infile[64];
+        sprintf(infile, "../vxl/%s.oc2", scene[i].filename);
         octree_file in(infile);
         
         // Set camera
@@ -133,4 +139,3 @@ int main(int argc, char ** argv) {
     return 0;
 }
 
-// kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
