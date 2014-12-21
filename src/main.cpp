@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
 
     init_screen("Voxel renderer");
     position = glm::dvec3(0, 0, 0);
-#ifdef FOUND_LIBAV
     Capture c;
+#ifdef FOUND_LIBAV
     if (capture) {
         char capturefile[32];
         mkdir("capture",0755);

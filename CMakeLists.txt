@@ -5,6 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -flto")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fwhole-program -fuse-linker-plugin")
 
+find_package(GLM REQUIRED)
 find_package(SDL)
 find_package(PNG)
 find_package(LibAV COMPONENTS avcodec avformat avutil swscale) # Actually we are using ffmpeg here.
@@ -15,6 +16,7 @@ find_package(SDL_image)
 
 # The library containing the voxel rendering engine.
 set(BUILDABLE_TARGETS engine)
+include_directories(${GLM_INCLUDE_DIR})
 add_library(engine
     src/timing.cpp
     src/pointset.cpp

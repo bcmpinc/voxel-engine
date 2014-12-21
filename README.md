@@ -16,30 +16,36 @@ Dependencies
 The **Voxel-Engine** requires a POSIX compliant operating system. (Thus it does not work on Microsoft Windows)
 Furthermore it uses the following libraries:
 
- - GLM: OpenGL Mathematics
- - OpenGL
- - SDL
- - SDL_Image
+ - GLM: OpenGL Mathematics (mandatory)
+ - SDL (required for the viewer)
+ - libpng (allows the benchmark tool to export the images)
+ - SDL_Image (for the heightmap converter)
+ - ffmpeg (allows the viewer to save a movie, note that *libav* probably won't work)
  
 The **Voxel-Engine** itself does not use SDL_Image, but this library is used by some of the
 tools accompanying the program.
 
 Compilation
 -----------
-The program and tools should compile by running `make`.
+The program and tools should compile by running:
+
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make -j 4
 
 Execution
 ---------
 After compilation, the **Voxel-Engine** program is executed by:
 
-    ./voxel vxl/sign.oc2
+    ./voxel ../vxl/sign.oc2
 
 Which opens the example `sing.oc2` model in the `vxl` directory.
 
 Tools
 -----
 
-    ./build_db vxl/pointset.vxl vxl/model.oc2 [mask repeats]
+    ./build_db ../vxl/pointset.vxl ../vxl/model.oc2 [mask repeats]
 
 Converts the `vxl/pointset.vxl` pointset and saves it to `vxl/model.oc2` in octree format. 
 This process contains a sorting step that reorders the points in the original pointset file.

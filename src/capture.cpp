@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -243,5 +243,12 @@ void Capture::end() {
 Capture::~Capture() {
     end();
 }
+
+#else
+// FFMPEG is not available, so provide dummy implementations.
+Capture::Capture(const char*, uint8_t*, int, int) : data(nullptr) {}
+void Capture::shoot() {}
+void Capture::end() {}
+Capture::~Capture() {}
 
 #endif
