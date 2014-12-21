@@ -20,7 +20,7 @@ Furthermore it uses the following libraries:
  - SDL (required for the viewer)
  - libpng (allows the benchmark tool to export the images)
  - SDL_Image (for the heightmap converter)
- - ffmpeg (allows the viewer to save a movie, note that *libav* probably won't work)
+ - ffmpeg (allows the viewer to save a movie, note that *libav* likely won't work, use -DLIBAV_ROOT_DIR=/path/to/ffmpeg)
  
 The **Voxel-Engine** itself does not use SDL_Image, but this library is used by some of the
 tools accompanying the program.
@@ -42,6 +42,12 @@ After compilation, the **Voxel-Engine** program is executed by:
 
 Which opens the example `sing.oc2` model in the `vxl` directory.
 
+If you have ffmpeg library on your computer, then the viewer can be build with video capture support. To do this run cmake with:
+
+    cmake -DENABLE_CAPTURE=ON -DLIBAV_ROOT_DIR=/path/to/ffmpeg ..
+
+Note that the libav library won't work here.
+    
 Tools
 -----
 

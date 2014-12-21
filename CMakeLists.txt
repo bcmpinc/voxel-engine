@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 2.6)
 project(voxel-engine)
+option(ENABLE_CAPTURE "Support the -capture switch if ffmpeg is available")
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -flto")
@@ -8,7 +10,9 @@ set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -fwhole-pr
 find_package(GLM REQUIRED)
 find_package(SDL)
 find_package(PNG)
-find_package(LibAV COMPONENTS avcodec avformat avutil swscale) # Actually we are using ffmpeg here.
+if (ENABLE_CAPTURE)
+    find_package(LibAV COMPONENTS avcodec avformat avutil swscale) # Actually we are using ffmpeg here.
+endif()
 find_package(SDL_image)
 # find_package(Lua51)
 # find_package(Qt4)
