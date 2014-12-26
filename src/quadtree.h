@@ -22,11 +22,11 @@
 #include <glm/glm.hpp>
 
 struct quadtree {
-    static const unsigned int dim = 10;
-    static const unsigned int N = (4<<dim<<dim)/3-1;
-    static const unsigned int M = N/4-1;
-    static const unsigned int L = M/4-1;
-    static const unsigned int SIZE = 1<<dim;
+    static const uint32_t dim = 10;
+    static const uint32_t N = (4<<dim<<dim)/3-1;
+    static const uint32_t M = N/4-1;
+    static const uint32_t L = M/4-1;
+    static const uint32_t SIZE = 1<<dim;
     
     /** 
      * The quadtree is stored in a heap-like fashion as a single array.
@@ -38,11 +38,11 @@ struct quadtree {
     };
         
     quadtree();
-    void set(int x, int y);
-    void set_face(int v, int color);
-    void compute(unsigned int i);
-    void build_fill(unsigned int i);
-    void build_check(int width, int height, unsigned int i, int size);
+    void set(uint32_t x, uint32_t y);
+    void set_face(uint32_t v, uint32_t color);
+    void compute(uint32_t i);
+    void build_fill(uint32_t i);
+    void build_check(int width, int height, uint32_t i, int size);
     void build(int width, int height);
 };
 

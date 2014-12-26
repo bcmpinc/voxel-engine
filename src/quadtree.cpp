@@ -20,13 +20,13 @@
 #include "quadtree.h"
 #include "art.h"
 
-static const unsigned int B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
-static const unsigned int S[] = {8, 4, 2, 1};
+static const uint32_t B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
+static const uint32_t S[] = {8, 4, 2, 1};
 
 /**
  * Sets a single value at given coordinates on the bottom level of the tree.
  */
-void quadtree::set(int x, int y) {
+void quadtree::set(uint32_t x, uint32_t y) {
     for (int i=0; i<4; i++) {
         x = (x | (x << S[i])) & B[i];
         y = (y | (y << S[i])) & B[i];
@@ -34,11 +34,12 @@ void quadtree::set(int x, int y) {
     map[M + (x | (y<<1))] = 1;
 }
 
-void quadtree::set_face(int v, int color) {
+void quadtree::set_face(uint32_t v, uint32_t color) {
+    // Uses 5-10 ms per frame.
     map[v] = 0;
     v -= M;
-    int x = v;
-    int y = v>>1;
+    uint32_t x = v;
+    uint32_t y = v>>1;
     for (int i=3; i>=0; i--) {
         x &= B[i];
         y &= B[i];
@@ -60,11 +61,11 @@ quadtree::quadtree() {
 /** 
  * Sets given node to 0 if all its children are zero. 
  */
-void quadtree::compute(unsigned int i) {
+void quadtree::compute(uint32_t i) {
     map[i] = children[i+1] > 0;
 }
 
-void quadtree::build_fill(unsigned int i) {
+void quadtree::build_fill(uint32_t i) {
     int n=1;
     while (i<N) {
         for (int j=0; j<n; j++) {
@@ -77,7 +78,7 @@ void quadtree::build_fill(unsigned int i) {
     
 }
 
-void quadtree::build_check(int width, int height, unsigned int i, int size) {
+void quadtree::build_check(int width, int height, uint32_t i, int size) {
     // Check if entirely outside of frustum.
     if (width<=0 || height<=0) {
         map[i]=0;
