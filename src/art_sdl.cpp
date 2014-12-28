@@ -28,7 +28,7 @@ using glm::max;
 static SDL_Surface *screen = NULL;
 
 // pointer to the pixels (32 bit)
-static int * pixs;
+static uint32_t * pixs;
 
 void init_screen(const char * caption) {
     // Initialize SDL 
@@ -51,7 +51,7 @@ void init_screen(const char * caption) {
     SDL_WM_SetCaption (caption, NULL);
 
     // set the pixel pointer
-    pixs=(int*)screen->pixels;  
+    pixs=(uint32_t*)screen->pixels;  
 }
 
 void clear_screen() {
@@ -66,6 +66,10 @@ void pixel(uint32_t x, uint32_t y, uint32_t c) {
     assert(x<SCREEN_WIDTH && y<SCREEN_HEIGHT);
     int64_t i = x+y*(SCREEN_WIDTH);
     pixs[i] = c;
+}
+
+uint32_t * pixel_buffer() {
+    return pixs;
 }
 
 /** Draws a line. */

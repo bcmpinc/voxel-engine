@@ -40,9 +40,10 @@ void init_screen(const char * caption);
 void clear_screen();
 void flip_screen();
 
-void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL (Software)
+void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL
+uint32_t * pixel_buffer(); // SDL
 #ifdef FOUND_PNG
-void export_png(const char * out); // SDL (Software) + libpng
+void export_png(const char * out); // SDL + libpng
 #endif
 void draw_box();
 

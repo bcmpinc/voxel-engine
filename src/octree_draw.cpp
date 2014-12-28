@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 using std::max;
 using std::min;
 
-static quadtree face;
+static quadtree face(SCREEN_WIDTH, SCREEN_HEIGHT, nullptr); // TODO: should be provided a pointer to the pixels.
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
@@ -165,11 +165,12 @@ void octree_draw(octree_file * file) {
     double timer_transfer;
     
     root = file->root;
+    face.pixels = pixel_buffer();
     
     Timer t_prepare;
         
     // Prepare the occlusion quadtree
-    face.build(SCREEN_WIDTH, SCREEN_HEIGHT);
+    face.build();
     
     timer_prepare = t_prepare.elapsed();
 

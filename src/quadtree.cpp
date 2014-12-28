@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2014  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cassert>
 #include <cstring>
 #include "quadtree.h"
-#include "art.h"
 
 static const uint32_t B[] = {0x00FF00FF, 0x0F0F0F0F, 0x33333333, 0x55555555};
 static const uint32_t S[] = {8, 4, 2, 1};
 
-/**
- * Sets a single value at given coordinates on the bottom level of the tree.
- */
 void quadtree::set(uint32_t x, uint32_t y) {
     for (int i=0; i<4; i++) {
         x = (x | (x << S[i])) & B[i];
@@ -49,18 +46,19 @@ void quadtree::set_face(uint32_t v, uint32_t color) {
     x &= 0xffff;
     y &= 0xffff;
     pixel(x, y, color);
-}    
+}
 
-/**
- * Resets the quadtree, such that it is 0 everywhere
- */
-quadtree::quadtree() {
+void quadtree::pixel(uint32_t x, uint32_t y, uint32_t c) {
+    assert(x<width && y<height);
+    int64_t i = x+y*width;
+    pixels[i] = c;
+}
+
+quadtree::quadtree(uint32_t width, uint32_t height, uint32_t* pixels) 
+    : width(width), height(height), pixels(pixels) {
     memset(map,0,sizeof(map));
 }
 
-/** 
- * Sets given node to 0 if all its children are zero. 
- */
 void quadtree::compute(uint32_t i) {
     map[i] = children[i+1] > 0;
 }
@@ -78,29 +76,26 @@ void quadtree::build_fill(uint32_t i) {
     
 }
 
-void quadtree::build_check(int width, int height, uint32_t i, int size) {
+void quadtree::build_check(int w, int h, unsigned int i, int size) {
     // Check if entirely outside of frustum.
-    if (width<=0 || height<=0) {
+    if (w<=0 || h<=0) {
         map[i]=0;
         return;
     }
     // Check if partially out of frustum.
-    if (i<L && (width<size || height<size)) {
+    if (i<L && (w<size || h<size)) {
         map[i]=1;
         size/=2;
-        build_check(width,     height,     i*4+4,size);
-        build_check(width-size,height,     i*4+5,size);
-        build_check(width,     height-size,i*4+6,size);
-        build_check(width-size,height-size,i*4+7,size);
+        build_check(w,     h,     i*4+4,size);
+        build_check(w-size,h,     i*4+5,size);
+        build_check(w,     h-size,i*4+6,size);
+        build_check(w-size,h-size,i*4+7,size);
         return;
     }
     build_fill(i);
 }
 
-/**
- * Ensures that a node is non-zero if one of its children is nonzero.
- */
-void quadtree::build(int width, int height) {
+void quadtree::build() {
     int size = SIZE/2;
     build_check(width,      height,      0, size);
     build_check(width-size, height,      1, size);

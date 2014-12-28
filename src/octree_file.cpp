@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+
 #include "octree.h"
 
 #define static_assert(test, message) typedef char static_assert__##message[(test)?1:-1]
