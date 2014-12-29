@@ -28,13 +28,14 @@ void quadtree::set(uint32_t x, uint32_t y) {
         x = (x | (x << S[i])) & B[i];
         y = (y | (y << S[i])) & B[i];
     }
-    map[M + (x | (y<<1))] = 1;
+    uint32_t v = N + (x | (y<<1));
+    children[v/4] &= ~(16<<(v&3));
 }
 
-void quadtree::set_face(uint32_t v, uint32_t color) {
+void quadtree::draw(uint32_t v, uint32_t color) {
     // Uses 5-10 ms per frame.
-    map[v] = 0;
-    v -= M;
+    // children[v/4] &= ~(16<<(v&3)); // Moved to octree_draw.
+    v -= N;
     uint32_t x = v;
     uint32_t y = v>>1;
     for (int i=3; i>=0; i--) {
@@ -56,18 +57,14 @@ void quadtree::pixel(uint32_t x, uint32_t y, uint32_t c) {
 
 quadtree::quadtree(uint32_t width, uint32_t height, uint32_t* pixels) 
     : width(width), height(height), pixels(pixels) {
-    memset(map,0,sizeof(map));
+        memset(children, 0, sizeof(children));
 }
 
-void quadtree::compute(uint32_t i) {
-    map[i] = children[i+1] > 0;
-}
-
-void quadtree::build_fill(uint32_t i) {
+void quadtree::build_fill(int i) {
     int n=1;
     while (i<N) {
         for (int j=0; j<n; j++) {
-            map[i+j]=1;
+            children[i+j]=0xf0;
         }
         i++;
         i<<=2;
@@ -76,37 +73,34 @@ void quadtree::build_fill(uint32_t i) {
     
 }
 
-void quadtree::build_check(int w, int h, unsigned int i, int size) {
+bool quadtree::build_check(int w, int h, int i, int size) {
+    if (i < N) {
+        children[i]=0;
+    }
     // Check if entirely outside of frustum.
     if (w<=0 || h<=0) {
-        map[i]=0;
-        return;
+        return false;
     }
     // Check if partially out of frustum.
-    if (i<L && (w<size || h<size)) {
-        map[i]=1;
+    if (i<N && (w<size || h<size)) {
         size/=2;
-        build_check(w,     h,     i*4+4,size);
-        build_check(w-size,h,     i*4+5,size);
-        build_check(w,     h-size,i*4+6,size);
-        build_check(w-size,h-size,i*4+7,size);
-        return;
+        children[i] |= build_check(w,     h,     i*4+4,size) << 4;
+        children[i] |= build_check(w-size,h,     i*4+5,size) << 5;
+        children[i] |= build_check(w,     h-size,i*4+6,size) << 6;
+        children[i] |= build_check(w-size,h-size,i*4+7,size) << 7;
+        return children[i];
     }
     build_fill(i);
+    return true;
 }
 
 void quadtree::build() {
-    int size = SIZE/2;
-    build_check(width,      height,      0, size);
-    build_check(width-size, height,      1, size);
-    build_check(width,      height-size, 2, size);
-    build_check(width-size, height-size, 3, size);
+    build_check(width, height, -1, SIZE);
 }
 
 const unsigned int quadtree::dim;
-const unsigned int quadtree::N;
-const unsigned int quadtree::M;
-const unsigned int quadtree::L;
 const unsigned int quadtree::SIZE;
+const int quadtree::N;
+const int quadtree::M;
 
     

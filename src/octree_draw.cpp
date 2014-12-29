@@ -119,8 +119,9 @@ static bool traverse(
         return false;
     } else {
         // Traverse quadtree 
+        int mask = face.children[quadnode];
         for (int i = 4; i<8; i++) {
-            if (!face.map[quadnode*4+i]) continue;
+            if (!(mask&(1<<i))) continue;
             new_bound = (bound + __builtin_shuffle(bound,quad_permutation[i])) >> 1;
             v4si new_dx = (dx + __builtin_shuffle(dx,quad_permutation[i])) >> 1;
             v4si new_dy = (dy + __builtin_shuffle(dy,quad_permutation[i])) >> 1;
@@ -130,21 +131,20 @@ static bool traverse(
             ltz = (new_bound - new_dltz)<0;
             gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
-            if (quadnode<(int)quadtree::L) {
-                traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth); 
+            if (quadnode<quadtree::M) {
+                bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth);
+                mask &= ~(r<<i); 
                 count_quad++;
             } else if (octnode < 0xff000000u) {
-                face.set_face(quadnode*4+i, root[octnode].avgcolor); // Rendering
+                face.draw(quadnode*4+i, root[octnode].avgcolor); // Rendering
+                mask &= ~(1<<i);
             } else {
-                face.set_face(quadnode*4+i, octnode); // Rendering
+                face.draw(quadnode*4+i, octnode); // Rendering
+                mask &= ~(1<<i);
             }
         }
-        if (quadnode>=0) {
-            face.compute(quadnode);
-            return !face.map[quadnode];
-        } else {
-            return face.children[0]==0;
-        }
+        face.children[quadnode] = mask;
+        return mask == 0;
     }
 }
     

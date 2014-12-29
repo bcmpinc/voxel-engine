@@ -23,10 +23,9 @@
 struct quadtree {
 public:
     static const uint32_t dim = 10;
-    static const uint32_t N = (4<<dim<<dim)/3-1;
-    static const uint32_t M = N/4-1;
-    static const uint32_t L = M/4-1;
     static const uint32_t SIZE = 1<<dim;
+    static const int N = (1<<dim<<dim)/3-1;
+    static const int M = N/4-1;
     
 private:
     uint32_t width;
@@ -35,23 +34,21 @@ private:
 public:
     uint32_t * pixels;
 
+    /** children[-1] */
+    uint32_t rootnode;
+    
     /** 
      * The quadtree is stored in a heap-like fashion as a single array.
-     * The child nodes of map[i] are map[4*i+1], ..., map[4*i+4].
+     * The child nodes of map[i] are map[4*i+4], ..., map[4*i+7].
      */
-    union {
-        uint8_t  map[N];
-        uint32_t children[N/4];
-    };
+    uint32_t children[N];
 
     /** Creates a new quadtree, to be used for rendering to the width * height * 32bit image buffer in pixels. 
      * It is assumed that the second row of pixels starts at pixels[width]. */
     quadtree(uint32_t width, uint32_t height, uint32_t * pixels);
 
-    void set_face(uint32_t v, uint32_t color);
-    
-    /** Sets given node to 0 if all its children are zero. */
-    void compute(uint32_t i);
+    /** Draws the pixel associated with the given leafnode. */
+    void draw(uint32_t v, uint32_t color);
     
     /** Initializes the quadtree such that all quadtree nodes within view are set to 1. */    
     void build();
@@ -65,8 +62,8 @@ private:
      * Does not propagate this value through the rest of the tree. */
     void set(uint32_t x, uint32_t y);
     
-    void build_fill(uint32_t i);
-    void build_check(int w, int h, uint32_t i, int size);
+    void build_fill(int i);
+    bool build_check(int w, int h, int i, int size);
 };
 
 
