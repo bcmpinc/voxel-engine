@@ -204,6 +204,6 @@ void export_png(const char * out) {
 #ifdef FOUND_LIBAV
 # include "capture.h"
 class Capture capture_screen(const char* name) {
-    return Capture(name, (uint8_t*)pixs, SCREEN_WIDTH, SCREEN_HEIGHT);
+    return Capture(name, surface(pixs, SCREEN_WIDTH, SCREEN_HEIGHT));
 }
 #endif

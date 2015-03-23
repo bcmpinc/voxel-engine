@@ -55,7 +55,7 @@ struct CaptureData {
     uint8_t * buffer;
     AVPacket pkt;
 
-    CaptureData(const char* filename, uint8_t* data, int width, int height) { 
+    CaptureData(const char* filename, surface surf) { 
         av_register_all();
         AVOutputFormat * fmt = av_guess_format("mp4", NULL, NULL);
         if (fmt == nullptr) {
@@ -80,8 +80,8 @@ struct CaptureData {
         c->codec_id = fmt->video_codec;
         c->codec_type = AVMEDIA_TYPE_VIDEO;
         c->bit_rate = 4000000;
-        c->width = width;
-        c->height = height;
+        c->width = surf.width;
+        c->height = surf.height;
         c->gop_size = 25;
         c->pix_fmt = PIX_FMT_YUV420P;
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -128,7 +128,7 @@ struct CaptureData {
             fprintf(stderr, "capture.cpp:Cannot initialize the conversion context\n");
             exit(1);
         }
-        buffer = data;
+        buffer = (uint8_t*)surf.data;
         
         /* open the output file, if needed */
 #ifndef AVIO_FLAG_WRITE
@@ -222,8 +222,8 @@ struct CaptureData {
     }
 };
 
-Capture::Capture(const char* filename, uint8_t* data, int width, int height)
-    : data(new CaptureData(filename, data, width, height)) {
+Capture::Capture(const char* filename, surface surf)
+    : data(new CaptureData(filename, surf)) {
 }
 
 void Capture::shoot() {
@@ -246,7 +246,7 @@ Capture::~Capture() {
 
 #else
 // FFMPEG is not available, so provide dummy implementations.
-Capture::Capture(const char*, uint8_t*, int, int) : data(nullptr) {}
+Capture::Capture(const char*, surface) : data(nullptr) {}
 void Capture::shoot() {}
 void Capture::end() {}
 Capture::~Capture() {}

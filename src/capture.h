@@ -19,13 +19,13 @@
 
 #ifndef CAPTURE_H
 #define CAPTURE_H
-#include <stdint.h>
+#include "surface.h"
 
 class Capture {
     struct CaptureData * data;
 public:
     Capture() : data(nullptr) {}
-    Capture(const char * filename, uint8_t * data, int width, int height);
+    Capture(const char * filename, surface surf);
     Capture(Capture&& other) : data(other.data) { other.data=nullptr; }
     void operator=(Capture&& other) { end(); data=other.data; other.data=nullptr; }
     ~Capture();
