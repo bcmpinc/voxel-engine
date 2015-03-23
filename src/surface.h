@@ -21,11 +21,13 @@
 #include <stdint.h>
 
 struct surface {
-    uint32_t * const data;
-    const int width;
-    const int height;
-    surface(uint32_t * data, const int width, const int height) : data(data), width(width), height(height) {}
+    uint32_t * data;
+    uint32_t width;
+    uint32_t height;
+    surface() : data(nullptr), width(-1), height(-1) {}
+    surface(uint32_t * data, uint32_t width, uint32_t height) : data(data), width(width), height(height) {}
     void export_png(const char * filename);
+    void pixel(uint32_t x, uint32_t y, uint32_t c);
 };
 
 #endif

@@ -20,6 +20,8 @@
 #define ART_H
 #include <stdint.h>
 #include <glm/glm.hpp>
+#include "surface.h"
+#include "octree.h"
 
 #define SCREEN_FULLSCREEN  0
 
@@ -31,40 +33,18 @@
 # define SCREEN_HEIGHT    768
 #endif
 
-#ifdef IN_IDE_PARSER // Let the kdevelop ide parser think that these are defined.
-# define FOUND_PNG
-# define FOUND_LIBAV
-#endif
-
 void init_screen(const char * caption);
 void clear_screen();
 void flip_screen();
 
-void pixel(uint32_t x, uint32_t y, uint32_t c); // SDL
-uint32_t * pixel_buffer(); // SDL
-#ifdef FOUND_PNG
-void export_png(const char * out); // SDL + libpng
-#endif
+surface get_screen();
+
 void draw_box();
 
 // void draw_cubemap(uint32_t texture); // OpenGL
 // uint32_t load_texture(const char* filename); // OpenGL
 // uint32_t load_cubemap(const char* format); // OpenGL
 
-#ifdef FOUND_LIBAV
-class Capture capture_screen(const char* name);
-#endif
-
-namespace frustum {
-    // Compute frustum parameters.
-    // left, right, top and bottom are the bounds of the near plane.
-    const int left   = -SCREEN_WIDTH/2;
-    const int right  =  SCREEN_WIDTH/2;
-    const int top    =  SCREEN_HEIGHT/2;
-    const int bottom = -SCREEN_HEIGHT/2;
-    const int near   =  SCREEN_HEIGHT; 
-    const int cubepos=  SCREEN_WIDTH; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
-    const int far    =  SCREEN_WIDTH * 2; // > sqrt(3)*cubepos 
-}
+view_pane get_view_pane();
 
 #endif

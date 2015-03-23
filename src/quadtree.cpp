@@ -50,14 +50,14 @@ void quadtree::draw(uint32_t v, uint32_t color) {
 }
 
 void quadtree::pixel(uint32_t x, uint32_t y, uint32_t c) {
-    assert(x<width && y<height);
-    int64_t i = x+y*width;
-    pixels[i] = c;
+    assert(x<surf.width && y<surf.height);
+    int64_t i = x+y*surf.width;
+    surf.data[i] = c;
 }
 
-quadtree::quadtree(uint32_t width, uint32_t height, uint32_t* pixels) 
-    : width(width), height(height), pixels(pixels) {
-        memset(children, 0, sizeof(children));
+quadtree::quadtree() {}
+quadtree::quadtree(surface surf) : surf(surf) {
+    memset(children, 0, sizeof(children));
 }
 
 void quadtree::build_fill(int i) {
@@ -95,7 +95,7 @@ bool quadtree::build_check(int w, int h, int i, int size) {
 }
 
 void quadtree::build() {
-    build_check(width, height, -1, SIZE);
+    build_check(surf.width, surf.height, -1, SIZE);
 }
 
 const unsigned int quadtree::dim;

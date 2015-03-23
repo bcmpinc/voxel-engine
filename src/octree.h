@@ -20,6 +20,7 @@
 #define OCTREE_H
 #include <stdint.h>
 #include <glm/glm.hpp>
+#include "surface.h"
 
 /** A node in an octree. 
  *
@@ -76,6 +77,10 @@ private:
     octree_file& operator=(octree_file&);
 };
 
-void octree_draw(octree_file* file, glm::dvec3 position, glm::dmat3 orientation);
+struct view_pane {
+    double left, right, top, bottom;
+};
+
+void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 position, glm::dmat3 orientation);
 
 #endif

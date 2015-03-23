@@ -62,14 +62,10 @@ void flip_screen() {
     SDL_Flip (screen);
 }
 
-void pixel(uint32_t x, uint32_t y, uint32_t c) {
+static void pixel(uint32_t x, uint32_t y, uint32_t c) {
     assert(x<SCREEN_WIDTH && y<SCREEN_HEIGHT);
     int64_t i = x+y*(SCREEN_WIDTH);
     pixs[i] = c;
-}
-
-uint32_t * pixel_buffer() {
-    return pixs;
 }
 
 /** Draws a line. */
@@ -180,30 +176,27 @@ void draw_box() {
     }
 }
 
-#ifdef FOUND_PNG
-# include <png.h>
-void export_png(const char * out) {
-    png_bytep row_pointers[SCREEN_HEIGHT];
-    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    png_infop info_ptr = png_create_info_struct(png_ptr);
-    if (png_ptr && info_ptr && !setjmp(png_jmpbuf(png_ptr))) {
-        for (int i=0; i<SCREEN_WIDTH*SCREEN_HEIGHT; i++)
-            pixs[i] = 0xff000000 | ((pixs[i]&0xff0000)>>16) | (pixs[i]&0xff00) | ((pixs[i]&0xff)<<16);
-        FILE * fp = fopen(out,"wb");
-        png_init_io (png_ptr, fp);
-        png_set_IHDR(png_ptr, info_ptr, SCREEN_WIDTH, SCREEN_HEIGHT, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-        for (int i = 0; i < SCREEN_HEIGHT; i++) row_pointers[i] = (png_bytep)(pixs+i*SCREEN_WIDTH);
-        png_set_rows(png_ptr, info_ptr, row_pointers);
-        png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, 0);
-        fclose(fp);
-    }
-    png_destroy_write_struct(&png_ptr, &info_ptr);
+surface get_screen() {
+    return surface(pixs, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
-#endif
 
-#ifdef FOUND_LIBAV
-# include "capture.h"
-class Capture capture_screen(const char* name) {
-    return Capture(name, surface(pixs, SCREEN_WIDTH, SCREEN_HEIGHT));
+namespace frustum {
+    // Compute frustum parameters.
+    // left, right, top and bottom are the bounds of the near plane.
+    const int left   = -SCREEN_WIDTH/2;
+    const int right  =  SCREEN_WIDTH/2;
+    const int top    =  SCREEN_HEIGHT/2;
+    const int bottom = -SCREEN_HEIGHT/2;
+    const int near   =  SCREEN_HEIGHT; 
+    const int cubepos=  SCREEN_WIDTH; // > sqrt(3)*SCREEN_WIDTH > hypot(SCREEN_WIDTH,SCREEN_HEIGHT,SCREEN_HEIGHT) > max dist of view plane.
+    const int far    =  SCREEN_WIDTH * 2; // > sqrt(3)*cubepos 
 }
-#endif
+
+view_pane get_view_pane() {
+    view_pane r;
+    r.left   = frustum::left   / (double)frustum::near;
+    r.right  = frustum::right  / (double)frustum::near;
+    r.top    = frustum::top    / (double)frustum::near;
+    r.bottom = frustum::bottom / (double)frustum::near;
+    return r;
+}

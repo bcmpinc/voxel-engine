@@ -17,9 +17,9 @@
 */
 
 #include <cstdio>
+#include <cassert>
 #include <algorithm>
 
-#include "art.h"
 #include "quadtree.h"
 #include "timing.h"
 #include "octree.h"
@@ -29,13 +29,10 @@
 using std::max;
 using std::min;
 
-static quadtree face(SCREEN_WIDTH, SCREEN_HEIGHT, nullptr); // TODO: should be provided a pointer to the pixels.
+static quadtree face;
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
-
-static_assert(quadtree::SIZE >= SCREEN_HEIGHT, quadtree_height_too_small);
-static_assert(quadtree::SIZE >= SCREEN_WIDTH,  quadtree_width_too_small);
 
 // Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
 typedef int32_t v4si __attribute__ ((vector_size (16)));
@@ -145,25 +142,27 @@ static bool traverse(
         return mask == 0;
     }
 }
-    
-static const double quadtree_bounds[] = {
-    frustum::left  /(double)frustum::near,
-   (frustum::left + (frustum::right -frustum::left)*(double)quadtree::SIZE/SCREEN_WIDTH )/frustum::near,
-   (frustum::top  + (frustum::bottom-frustum::top )*(double)quadtree::SIZE/SCREEN_HEIGHT)/frustum::near,
-    frustum::top   /(double)frustum::near,
-};
 
 /** Render the octree to the OpenGL cubemap texture. 
  */
-void octree_draw(octree_file * file, glm::dvec3 position, glm::dmat3 orientation) {
+void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 position, glm::dmat3 orientation) {
     Timer t_global;
     
     double timer_prepare;
     double timer_query;
     double timer_transfer;
     
+    assert(quadtree::SIZE >= surf.width);
+    assert(quadtree::SIZE >= surf.height);
+    double quadtree_bounds[] = {
+        view.left,
+       (view.left + (view.right -view.left)*(double)quadtree::SIZE/surf.width ),
+       (view.top  + (view.bottom-view.top )*(double)quadtree::SIZE/surf.height),
+        view.top,
+    };
+
     root = file->root;
-    face.pixels = pixel_buffer();
+    face.surf = surf;
     
     Timer t_prepare;
         

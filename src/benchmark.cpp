@@ -92,7 +92,7 @@ int main(int argc, char ** argv) {
         for (int j=-1; j<N; j++) {
             Timer t;
             clear_screen();
-            octree_draw(&in, position, orientation);
+            octree_draw(&in, get_screen(), get_view_pane(), position, orientation);
             flip_screen();
             if (j>=0) {
                 times[j] = t.elapsed();
@@ -120,7 +120,7 @@ int main(int argc, char ** argv) {
         if (argc>=2) {
             char outfile[64];
             sprintf(outfile, "bshots/%.10s-%02d-%s.png", argv[1], i, scene[i].filename);
-            export_png(outfile);
+            get_screen().export_png(outfile);
         }
 #endif
     }

@@ -19,6 +19,7 @@
 #ifndef VOXEL_QUADTREE_H
 #define VOXEL_QUADTREE_H
 #include <stdint.h>
+#include "surface.h"
 
 struct quadtree {
 public:
@@ -27,12 +28,7 @@ public:
     static const int N = (1<<dim<<dim)/3-1;
     static const int M = N/4-1;
     
-private:
-    uint32_t width;
-    uint32_t height;
-    
-public:
-    uint32_t * pixels;
+    surface surf;
 
     /** children[-1] */
     uint32_t rootnode;
@@ -45,7 +41,8 @@ public:
 
     /** Creates a new quadtree, to be used for rendering to the width * height * 32bit image buffer in pixels. 
      * It is assumed that the second row of pixels starts at pixels[width]. */
-    quadtree(uint32_t width, uint32_t height, uint32_t * pixels);
+    quadtree();
+    quadtree(surface surf);
 
     /** Draws the pixel associated with the given leafnode. */
     void draw(uint32_t v, uint32_t color);

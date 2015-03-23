@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         char capturefile[32];
         mkdir("capture",0755);
         sprintf(capturefile, "capture/cap%08d.mp4", getpid());
-        c = capture_screen(capturefile);
+        c = Capture(capturefile, get_screen());
     }
 #endif    
     // mainloop
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
         Timer t;
         if (moves) {
             clear_screen();
-            octree_draw(&in, position, orientation);
+            octree_draw(&in, get_screen(), get_view_pane(),position, orientation);
             //draw_box();
             c.shoot();
             flip_screen();
