@@ -22,15 +22,17 @@ include(AddTarget)
 
 # The library containing the voxel rendering engine.
 add_target(engine LIBRARY SOURCE
-    src/timing.h
-    src/timing.cpp
+    src/octree.h
+    src/octree_file.cpp
+    src/octree_draw.cpp
     src/pointset.h
     src/pointset.cpp
     src/quadtree.h
     src/quadtree.cpp
-    src/octree.h
-    src/octree_file.cpp
-    src/octree_draw.cpp
+    src/surface.h
+    src/surface.cpp
+    src/timing.h
+    src/timing.cpp
     REQUIRED GLM
     OPTIONAL PNG
 )
