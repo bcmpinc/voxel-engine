@@ -52,7 +52,6 @@ add_target(benchmark SOURCE
     src/benchmark.cpp
     src/art_sdl.cpp
     REQUIRED SDL engine
-    OPTIONAL PNG
 )
 
 add_target(convert   SOURCE src/convert.cpp   REQUIRED engine)

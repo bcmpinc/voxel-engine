@@ -26,7 +26,6 @@
 #include <map>
 #include <string>
 
-#include <png.h>
 #include <sys/stat.h>
 
 #include "timing.h"
@@ -70,11 +69,9 @@ static double results[scenes];
 
 int main(int argc, char ** argv) {
     init_screen("Voxel renderer - benchmark");
-#ifdef FOUND_PNG
     if (argc>=2) {
         mkdir("bshots",0755);
     }
-#endif
 
     // mainloop
     for (int i=0; i<scenes; i++) {
@@ -115,14 +112,12 @@ int main(int argc, char ** argv) {
         printf(" | %7.2f\n", results[i]);
         fflush(stdout);
         
-#ifdef FOUND_PNG
         // Output png
         if (argc>=2) {
             char outfile[64];
             sprintf(outfile, "bshots/%.10s-%02d-%s.png", argv[1], i, scene[i].filename);
             get_screen().export_png(outfile);
         }
-#endif
     }
 
     printf("\nBenchmark results:");
