@@ -19,6 +19,7 @@
 #ifndef OCTREE_H
 #define OCTREE_H
 #include <stdint.h>
+#include <glm/glm.hpp>
 
 /** A node in an octree. 
  *
@@ -75,6 +76,6 @@ private:
     octree_file& operator=(octree_file&);
 };
 
-void octree_draw(octree_file* file);
+void octree_draw(octree_file* file, glm::dvec3 position, glm::dmat3 orientation);
 
 #endif

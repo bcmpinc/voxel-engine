@@ -18,10 +18,8 @@
 
 #include <cstdio>
 #include <algorithm>
-//#include <GL/gl.h>
 
 #include "art.h"
-#include "events.h"
 #include "quadtree.h"
 #include "timing.h"
 #include "octree.h"
@@ -157,7 +155,7 @@ static const double quadtree_bounds[] = {
 
 /** Render the octree to the OpenGL cubemap texture. 
  */
-void octree_draw(octree_file * file) {
+void octree_draw(octree_file * file, glm::dvec3 position, glm::dmat3 orientation) {
     Timer t_global;
     
     double timer_prepare;

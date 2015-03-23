@@ -22,13 +22,18 @@ find_package(SDL_image)
 set(BUILDABLE_TARGETS engine)
 include_directories(${GLM_INCLUDE_DIR})
 add_library(engine
+    src/timing.h
     src/timing.cpp
+    src/pointset.h
     src/pointset.cpp
+    src/quadtree.h
     src/quadtree.cpp
+    src/octree.h
     src/octree_file.cpp
     src/octree_draw.cpp
 )
 
+# Adds 'lib' to the include dir and libraries used by target 'name'.
 function(require_lib name lib)
     # Find Package scripts use inconsistent naming :(
     if (${lib}_INCLUDE_DIR)
@@ -50,6 +55,12 @@ endfunction()
 
 
 # Function to generate executable targets, based on their dependencies.
+# Specify NO_ENGINE to exclude the rendering engine from being linked.
+# Specify LIBRARY to create a library instead of an executable.
+# SOURCE lists the source code files of the target
+# REQUIRED lists the mandatory libraries (the engine is added implicitly)
+# OPTIONAL lists the libraries that are used for additional functionality.
+# (use #ifdef FOUND_LIB to test whether lib is available).
 include(CMakeParseArguments)
 function(add_target name) 
     cmake_parse_arguments(TARGET "NO_ENGINE;LIBRARY" "" "SOURCE;REQUIRED;OPTIONAL" ${ARGN})
@@ -57,6 +68,7 @@ function(add_target name)
     string(TOUPPER "${TARGET_OPTIONAL}" TARGET_OPTIONAL)
     set(REQUIRED_SATISFIED TRUE)
     set(MISSING "")
+    # Check if required libraries are available
     foreach(LIB ${TARGET_REQUIRED})
         if (NOT ${LIB}_FOUND)
             set(REQUIRED_SATISFIED FALSE)
@@ -65,11 +77,13 @@ function(add_target name)
     endforeach()
     if (REQUIRED_SATISFIED)
         set(BUILDABLE_TARGETS "${BUILDABLE_TARGETS} ${name}" PARENT_SCOPE)
+        # Create the target
         if (TARGET_LIBRARY)
             add_library(${name} ${TARGET_SOURCE})
         else ()
             add_executable(${name} ${TARGET_SOURCE})
         endif ()
+        # Attach the libraries.
         if (NOT TARGET_NO_ENGINE)
             # include the engine by default
             target_link_libraries(${name} engine)
@@ -100,7 +114,6 @@ add_target(voxel SOURCE
 
 add_target(benchmark SOURCE
     src/benchmark.cpp
-    src/events.cpp
     src/art_sdl.cpp
     REQUIRED SDL
     OPTIONAL PNG

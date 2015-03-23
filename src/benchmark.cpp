@@ -30,7 +30,6 @@
 #include <sys/stat.h>
 
 #include "timing.h"
-#include "events.h"
 #include "art.h"
 #include "octree.h"
 
@@ -65,8 +64,10 @@ static const Scene scene [] = {
 
 static const int scenes = sizeof(scene)/sizeof(scene[0]);
 static const int N = 5;
-double results[scenes];
+static double results[scenes];
+
 ///////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char ** argv) {
     init_screen("Voxel renderer - benchmark");
 #ifdef FOUND_PNG
@@ -77,29 +78,24 @@ int main(int argc, char ** argv) {
 
     // mainloop
     for (int i=0; i<scenes; i++) {
-        // Check for quit
-        handle_events();
-        if (quit) return 1;
-        
         // Load file
         char infile[64];
         sprintf(infile, "../vxl/%s.oc2", scene[i].filename);
         octree_file in(infile);
         
         // Set camera
-        position = scene[i].position * SCALE;
-        orientation = scene[i].orientation;
-        
+        glm::dvec3 position = scene[i].position * SCALE;
+        glm::dmat3 orientation = scene[i].orientation;
+
         // Run tests
         double times[N];
         for (int j=-1; j<N; j++) {
             Timer t;
             clear_screen();
-            octree_draw(&in);
+            octree_draw(&in, position, orientation);
             flip_screen();
             if (j>=0) {
                 times[j] = t.elapsed();
-                next_frame(times[j]);
             }
         }
         

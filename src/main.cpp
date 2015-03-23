@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
         Timer t;
         if (moves) {
             clear_screen();
-            octree_draw(&in);
+            octree_draw(&in, position, orientation);
             //draw_box();
             c.shoot();
             flip_screen();
