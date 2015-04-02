@@ -40,7 +40,7 @@ static bool button_state[button::STATES];
 static bool mousemove=false;
 
 // Position
-static const double rotatespeed = -0.005, movespeed = 1<<17;
+static const double rotatespeed = -0.005, rollspeed = 0.05, movespeed = 1<<17;
 static const int MILLISECONDS_PER_FRAME = 33;
 
 bool quit  = false;
@@ -142,7 +142,7 @@ void handle_events() {
         glm::dmat4 tview = glm::transpose(view);
         view = glm::rotate(
             view, 
-            rd*3.0,
+            rd*rollspeed,
             glm::dvec3(tview[2])
         );
         orientation = glm::dmat3(view);                
