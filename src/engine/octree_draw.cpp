@@ -38,9 +38,9 @@ static int count, count_oct, count_quad;
 // Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
 typedef int32_t v4si __attribute__ ((vector_size (16)));
 
-const v4si quad_permutation[8] = {
+const v4si quad_mask[8] = {
     {},{},{},{},
-    {0,0,3,3},{1,1,3,3},{0,0,2,2},{1,1,2,2},
+    {1,0,0,1},{0,1,0,1},{1,0,1,0},{0,1,1,0},
 };
 
 static const int32_t SCENE_DEPTH = 26;
@@ -72,14 +72,14 @@ static inline int movemask_epi32(__m128i v) {
  */
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode,
-    const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dltz, const v4si dgtz,
+    const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dgtz,
     const __m128i pos, const int depth
 ){    
     count++;
     // Recursion
     int va = _mm_cvtsi128_si32((__m128i)bound);
     int vb = _mm_extract_epi32((__m128i)bound, 1);
-    if (depth>=0 && vb - va < 2<<SCENE_DEPTH) {
+    if (depth>=0 && vb + va < 2<<SCENE_DEPTH) {
         __m128i octant = _mm_cmplt_epi32(pos, _mm_setzero_si128());
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (octnode < 0xff000000) {
@@ -92,11 +92,10 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                v4si ltz = (new_bound - dltz)<0;
                 v4si gtz = (new_bound - dgtz)>0;
-                if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dltz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         } else {
             // Duplicate leaf node
@@ -106,30 +105,33 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                v4si ltz = (new_bound - dltz)<0;
                 v4si gtz = (new_bound - dgtz)>0;
-                if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dltz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         }
         return false;
     } else {
         // Traverse quadtree 
         int mask = face.children[quadnode];
+        const v4si perm = {1,0,3,2};
+        v4si mid_bound = (bound - __builtin_shuffle(bound,perm)) >> 1;
+        v4si mid_dx = (dx - __builtin_shuffle(dx,perm)) >> 1;
+        v4si mid_dy = (dy - __builtin_shuffle(dy,perm)) >> 1;
+        v4si mid_dz = (dz - __builtin_shuffle(dz,perm)) >> 1;
         for (int i = 4; i<8; i++) {
             if (!(mask&(1<<i))) continue;
-            v4si new_bound = (bound + __builtin_shuffle(bound,quad_permutation[i])) >> 1;
-            v4si new_dx = (dx + __builtin_shuffle(dx,quad_permutation[i])) >> 1;
-            v4si new_dy = (dy + __builtin_shuffle(dy,quad_permutation[i])) >> 1;
-            v4si new_dz = (dz + __builtin_shuffle(dz,quad_permutation[i])) >> 1;
-            v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
+            v4si new_mask = quad_mask[i];
+            v4si new_bound = new_mask?bound:mid_bound;
+            v4si new_dx = new_mask?dx:mid_dx;
+            v4si new_dy = new_mask?dy:mid_dy;
+            v4si new_dz = new_mask?dz:mid_dz;
             v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-            v4si ltz = (new_bound - new_dltz)<0;
             v4si gtz = (new_bound - new_dgtz)>0;
-            if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
+            if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
-                bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth);
+                bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dgtz, pos, depth);
                 mask &= ~(r<<i); 
                 count_quad++;
             } else if (octnode < 0xff000000u) {
@@ -183,9 +185,9 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
         v4si vertex = (v4si)DELTA[i]<<SCENE_DEPTH;
         glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
         v4si b = {
-            (int)(coord.z*quadtree_bounds[0] - coord.x),
+           -(int)(coord.z*quadtree_bounds[0] - coord.x),
             (int)(coord.z*quadtree_bounds[1] - coord.x),
-            (int)(coord.z*quadtree_bounds[2] - coord.y),
+           -(int)(coord.z*quadtree_bounds[2] - coord.y),
             (int)(coord.z*quadtree_bounds[3] - coord.y),
         };
         bounds[i] = b;
@@ -198,9 +200,8 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     v4si new_dx = (bounds[C^DX]-bounds[C]);
     v4si new_dy = (bounds[C^DY]-bounds[C]);
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
-    v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
     v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, SCENE_DEPTH-1);
+    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dgtz, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
