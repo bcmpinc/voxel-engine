@@ -72,12 +72,12 @@ static inline int movemask_epi32(__m128i v) {
  */
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode,
-    const __m128i bound, const v4si dx, const v4si dy, const v4si dz, const v4si frustum,
+    const __m128i bound, const __m128i dx, const __m128i dy, const __m128i dz, const __m128i frustum,
     const __m128i pos, const int depth
 ){    
     count++;
     // Recursion
-    // int delta = _mm_cvtsi128_si32(_mm_hadd_epi32((__m128i)bound,(__m128i)bound));
+    // int delta = _mm_cvtsi128_si32(_mm_hadd_epi32(bound,bound));
     int va = _mm_cvtsi128_si32(bound);
     int vb = _mm_extract_epi32(bound, 1);
     if (depth>=0 && vb + va < 2<<SCENE_DEPTH) {
@@ -90,10 +90,10 @@ static bool traverse(
                 if (!root[octnode].has_index(i)) continue;
                 int j = root[octnode].position(i);
                 __m128i new_bound = _mm_slli_epi32(bound, 1);
-                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,(__m128i)dx);
-                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,(__m128i)dy);
-                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,(__m128i)dz);
-                if (movemask_epi32(_mm_cmplt_epi32(new_bound, (__m128i)frustum))) continue; // frustum occlusion
+                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,dx);
+                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,dy);
+                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,dz);
+                if (movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
@@ -102,10 +102,10 @@ static bool traverse(
             for (int k = 0; k<7; k++) {
                 int i = furthest^k;
                 __m128i new_bound = _mm_slli_epi32(bound, 1);
-                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,(__m128i)dx);
-                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,(__m128i)dy);
-                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,(__m128i)dz);
-                if (movemask_epi32(_mm_cmplt_epi32(new_bound, (__m128i)frustum))) continue; // frustum occlusion
+                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,dx);
+                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,dy);
+                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,dz);
+                if (movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, octnode, new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
@@ -116,20 +116,20 @@ static bool traverse(
         int mask = face.children[quadnode];
         const v4si perm = {1,0,3,2};
         v4si mid_bound = ((v4si)bound - __builtin_shuffle((v4si)bound,perm)) >> 1;
-        v4si mid_dx = (dx - __builtin_shuffle(dx,perm)) >> 1;
-        v4si mid_dy = (dy - __builtin_shuffle(dy,perm)) >> 1;
-        v4si mid_dz = (dz - __builtin_shuffle(dz,perm)) >> 1;
+        v4si mid_dx = ((v4si)dx - __builtin_shuffle((v4si)dx,perm)) >> 1;
+        v4si mid_dy = ((v4si)dy - __builtin_shuffle((v4si)dy,perm)) >> 1;
+        v4si mid_dz = ((v4si)dz - __builtin_shuffle((v4si)dz,perm)) >> 1;
         for (int i = 4; i<8; i++) {
             if (!(mask&(1<<i))) continue;
             v4si new_mask = quad_mask[i];
             v4si new_bound = new_mask?(v4si)bound:mid_bound;
-            v4si new_dx = new_mask?dx:mid_dx;
-            v4si new_dy = new_mask?dy:mid_dy;
-            v4si new_dz = new_mask?dz:mid_dz;
+            v4si new_dx = new_mask?(v4si)dx:mid_dx;
+            v4si new_dy = new_mask?(v4si)dy:mid_dy;
+            v4si new_dz = new_mask?(v4si)dz:mid_dz;
             v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) continue; // frustum occlusion
+            if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
-                bool r = traverse(quadnode*4+i, octnode, (__m128i)new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
+                bool r = traverse(quadnode*4+i, octnode, (__m128i)new_bound, (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, depth);
                 mask &= ~(r<<i); 
                 count_quad++;
             } else if (octnode < 0xff000000u) {
@@ -199,7 +199,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     v4si new_dy = (bounds[C^DY]-bounds[C]);
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
     v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, (__m128i)bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
+    traverse(-1, 0, (__m128i)bounds[C], (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
