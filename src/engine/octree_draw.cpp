@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
+#include <xmmintrin.h>
 
 #include "quadtree.h"
 #include "timing.h"
@@ -70,9 +71,6 @@ static bool traverse(
     const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dltz, const v4si dgtz,
     const v4si pos, const int depth
 ){    
-    v4si ltz;
-    v4si gtz;
-    v4si new_bound;
     count++;
     // Recursion
     if (depth>=0 && bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
@@ -84,12 +82,12 @@ static bool traverse(
                 int i = furthest^k;
                 if (!root[octnode].has_index(i)) continue;
                 int j = root[octnode].position(i);
-                new_bound = bound<<1;
+                v4si new_bound = bound<<1;
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                ltz = (new_bound - dltz)<0;
-                gtz = (new_bound - dgtz)>0;
+                v4si ltz = (new_bound - dltz)<0;
+                v4si gtz = (new_bound - dgtz)>0;
                 if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
@@ -100,12 +98,12 @@ static bool traverse(
             int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
             for (int k = 0; k<7; k++) {
                 int i = furthest^k;
-                new_bound = bound<<1;
+                v4si new_bound = bound<<1;
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                ltz = (new_bound - dltz)<0;
-                gtz = (new_bound - dgtz)>0;
+                v4si ltz = (new_bound - dltz)<0;
+                v4si gtz = (new_bound - dgtz)>0;
                 if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
@@ -117,14 +115,14 @@ static bool traverse(
         int mask = face.children[quadnode];
         for (int i = 4; i<8; i++) {
             if (!(mask&(1<<i))) continue;
-            new_bound = (bound + __builtin_shuffle(bound,quad_permutation[i])) >> 1;
+            v4si new_bound = (bound + __builtin_shuffle(bound,quad_permutation[i])) >> 1;
             v4si new_dx = (dx + __builtin_shuffle(dx,quad_permutation[i])) >> 1;
             v4si new_dy = (dy + __builtin_shuffle(dy,quad_permutation[i])) >> 1;
             v4si new_dz = (dz + __builtin_shuffle(dz,quad_permutation[i])) >> 1;
             v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
             v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-            ltz = (new_bound - new_dltz)<0;
-            gtz = (new_bound - new_dgtz)>0;
+            v4si ltz = (new_bound - new_dltz)<0;
+            v4si gtz = (new_bound - new_dgtz)>0;
             if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
                 bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, depth);
