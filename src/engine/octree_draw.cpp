@@ -72,7 +72,7 @@ static inline int movemask_epi32(__m128i v) {
  */
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode,
-    const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dgtz,
+    const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si frustum,
     const __m128i pos, const int depth
 ){    
     count++;
@@ -93,10 +93,9 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)dgtz));
-                if (gtz) continue; // frustum occlusion
+                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)frustum))) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         } else {
             // Duplicate leaf node
@@ -106,10 +105,9 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)dgtz));
-                if (gtz) continue; // frustum occlusion
+                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)frustum))) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         }
         return false;
@@ -128,11 +126,10 @@ static bool traverse(
             v4si new_dx = new_mask?dx:mid_dx;
             v4si new_dy = new_mask?dy:mid_dy;
             v4si new_dz = new_mask?dz:mid_dz;
-            v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-            int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_dgtz));
-            if (gtz) continue; // frustum occlusion
+            v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
+                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
-                bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dgtz, pos, depth);
+                bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
                 mask &= ~(r<<i); 
                 count_quad++;
             } else if (octnode < 0xff000000u) {
@@ -201,8 +198,8 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     v4si new_dx = (bounds[C^DX]-bounds[C]);
     v4si new_dy = (bounds[C^DY]-bounds[C]);
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
-    v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dgtz, pos, SCENE_DEPTH-1);
+    v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
+    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
