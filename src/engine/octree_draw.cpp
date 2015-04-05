@@ -46,15 +46,15 @@ const v4si quad_permutation[8] = {
 static const int32_t SCENE_DEPTH = 26;
 
 static const int DX=4, DY=2, DZ=1;
-static const v4si DELTA[8]={
-    {-1,-1,-1},
-    {-1,-1, 1},
-    {-1, 1,-1},
-    {-1, 1, 1},
-    { 1,-1,-1},
-    { 1,-1, 1},
-    { 1, 1,-1},
-    { 1, 1, 1},
+static const __m128i DELTA[8]={
+    _mm_set_epi32(0,-1,-1,-1),
+    _mm_set_epi32(0, 1,-1,-1),
+    _mm_set_epi32(0,-1, 1,-1),
+    _mm_set_epi32(0, 1, 1,-1),
+    _mm_set_epi32(0,-1,-1, 1),
+    _mm_set_epi32(0, 1,-1, 1),
+    _mm_set_epi32(0,-1, 1, 1),
+    _mm_set_epi32(0, 1, 1, 1),
 };
 
 const v4si nil = {};
@@ -73,14 +73,14 @@ static inline int movemask_epi32(__m128i v) {
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode,
     const v4si bound, const v4si dx, const v4si dy, const v4si dz, const v4si dltz, const v4si dgtz,
-    const v4si pos, const int depth
+    const __m128i pos, const int depth
 ){    
     count++;
     // Recursion
     int va = _mm_cvtsi128_si32((__m128i)bound);
     int vb = _mm_extract_epi32((__m128i)bound, 1);
     if (depth>=0 && vb - va < 2<<SCENE_DEPTH) {
-        __m128i octant = _mm_cmplt_epi32((__m128i)pos, _mm_setzero_si128());
+        __m128i octant = _mm_cmplt_epi32(pos, _mm_setzero_si128());
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (octnode < 0xff000000) {
             // Traverse octree
@@ -96,7 +96,7 @@ static bool traverse(
                 v4si gtz = (new_bound - dgtz)>0;
                 if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dltz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         } else {
             // Duplicate leaf node
@@ -110,7 +110,7 @@ static bool traverse(
                 v4si gtz = (new_bound - dgtz)>0;
                 if ((ltz[0] & gtz[1] & ltz[2] & gtz[3]) == 0) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dltz, dgtz, pos + (DELTA[i]<<depth), depth-1)) return true;
+                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dltz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         }
         return false;
@@ -180,7 +180,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     int max_z=-1<<31;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
-        v4si vertex = DELTA[i]<<SCENE_DEPTH;
+        v4si vertex = (v4si)DELTA[i]<<SCENE_DEPTH;
         glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
         v4si b = {
             (int)(coord.z*quadtree_bounds[0] - coord.x),
@@ -194,13 +194,13 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
             C = i;
         }
     }
-    v4si pos = {(int)position.x, (int)position.y, (int)position.z};
+    __m128i pos = _mm_set_epi32(0, -(int)position.z, -(int)position.y, -(int)position.x);
     v4si new_dx = (bounds[C^DX]-bounds[C]);
     v4si new_dy = (bounds[C^DY]-bounds[C]);
     v4si new_dz = (bounds[C^DZ]-bounds[C]);
     v4si new_dltz = (new_dx<0)*new_dx + (new_dy<0)*new_dy + (new_dz<0)*new_dz;
     v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, -pos, SCENE_DEPTH-1);
+    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_dltz, new_dgtz, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
