@@ -77,6 +77,7 @@ static bool traverse(
 ){    
     count++;
     // Recursion
+    // int delta = _mm_cvtsi128_si32(_mm_hadd_epi32((__m128i)bound,(__m128i)bound));
     int va = _mm_cvtsi128_si32((__m128i)bound);
     int vb = _mm_extract_epi32((__m128i)bound, 1);
     if (depth>=0 && vb + va < 2<<SCENE_DEPTH) {
@@ -92,8 +93,8 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                v4si gtz = (new_bound - dgtz)>0;
-                if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)dgtz));
+                if (gtz) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
@@ -105,8 +106,8 @@ static bool traverse(
                 if ((C^i)&DX) new_bound += dx;
                 if ((C^i)&DY) new_bound += dy;
                 if ((C^i)&DZ) new_bound += dz;
-                v4si gtz = (new_bound - dgtz)>0;
-                if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
+                int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)dgtz));
+                if (gtz) continue; // frustum occlusion
                 count_oct++;
                 if (traverse(quadnode, octnode, new_bound, dx, dy, dz, dgtz, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
@@ -128,8 +129,8 @@ static bool traverse(
             v4si new_dy = new_mask?dy:mid_dy;
             v4si new_dz = new_mask?dz:mid_dz;
             v4si new_dgtz = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-            v4si gtz = (new_bound - new_dgtz)>0;
-            if ((gtz[0] & gtz[1] & gtz[2] & gtz[3]) == 0) continue; // frustum occlusion
+            int gtz = movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_dgtz));
+            if (gtz) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
                 bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_dgtz, pos, depth);
                 mask &= ~(r<<i); 
