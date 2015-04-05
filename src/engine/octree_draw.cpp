@@ -89,25 +89,25 @@ static bool traverse(
                 int i = furthest^k;
                 if (!root[octnode].has_index(i)) continue;
                 int j = root[octnode].position(i);
-                v4si new_bound = bound<<1;
-                if ((C^i)&DX) new_bound += dx;
-                if ((C^i)&DY) new_bound += dy;
-                if ((C^i)&DZ) new_bound += dz;
-                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)frustum))) continue; // frustum occlusion
+                __m128i new_bound = _mm_slli_epi32((__m128i)bound, 1);
+                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,(__m128i)dx);
+                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,(__m128i)dy);
+                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,(__m128i)dz);
+                if (movemask_epi32(_mm_cmplt_epi32(new_bound, (__m128i)frustum))) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, root[octnode].child[j], (v4si)new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         } else {
             // Duplicate leaf node
             for (int k = 0; k<7; k++) {
                 int i = furthest^k;
-                v4si new_bound = bound<<1;
-                if ((C^i)&DX) new_bound += dx;
-                if ((C^i)&DY) new_bound += dy;
-                if ((C^i)&DZ) new_bound += dz;
-                if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)frustum))) continue; // frustum occlusion
+                __m128i new_bound = _mm_slli_epi32((__m128i)bound, 1);
+                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,(__m128i)dx);
+                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,(__m128i)dy);
+                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,(__m128i)dz);
+                if (movemask_epi32(_mm_cmplt_epi32(new_bound, (__m128i)frustum))) continue; // frustum occlusion
                 count_oct++;
-                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                if (traverse(quadnode, octnode, (v4si)new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
             }
         }
         return false;
