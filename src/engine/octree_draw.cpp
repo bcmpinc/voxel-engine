@@ -114,11 +114,11 @@ static bool traverse(
     } else {
         // Traverse quadtree 
         int mask = face.children[quadnode];
-        const v4si perm = {1,0,3,2};
-        v4si mid_bound = ((v4si)bound - __builtin_shuffle((v4si)bound,perm)) >> 1;
-        v4si mid_dx = ((v4si)dx - __builtin_shuffle((v4si)dx,perm)) >> 1;
-        v4si mid_dy = ((v4si)dy - __builtin_shuffle((v4si)dy,perm)) >> 1;
-        v4si mid_dz = ((v4si)dz - __builtin_shuffle((v4si)dz,perm)) >> 1;
+        const int perm = 0xb1;
+        v4si mid_bound = (v4si)_mm_srai_epi32(_mm_sub_epi32(bound, _mm_shuffle_epi32(bound,perm)), 1);
+        v4si mid_dx = (v4si)_mm_srai_epi32(_mm_sub_epi32(dx, _mm_shuffle_epi32(dx,perm)), 1);
+        v4si mid_dy = (v4si)_mm_srai_epi32(_mm_sub_epi32(dy, _mm_shuffle_epi32(dy,perm)), 1);
+        v4si mid_dz = (v4si)_mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,perm)), 1);
         for (int i = 4; i<8; i++) {
             if (!(mask&(1<<i))) continue;
             v4si new_mask = quad_mask[i];
