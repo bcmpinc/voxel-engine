@@ -114,18 +114,17 @@ static bool traverse(
     } else {
         // Traverse quadtree 
         int mask = face.children[quadnode];
-        const int perm = 0xb1;
-        v4si mid_bound = (v4si)_mm_srai_epi32(_mm_sub_epi32(bound, _mm_shuffle_epi32(bound,perm)), 1);
-        v4si mid_dx = (v4si)_mm_srai_epi32(_mm_sub_epi32(dx, _mm_shuffle_epi32(dx,perm)), 1);
-        v4si mid_dy = (v4si)_mm_srai_epi32(_mm_sub_epi32(dy, _mm_shuffle_epi32(dy,perm)), 1);
-        v4si mid_dz = (v4si)_mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,perm)), 1);
+        __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(bound, _mm_shuffle_epi32(bound,0xb1)), 1);
+        __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(dx, _mm_shuffle_epi32(dx,0xb1)), 1);
+        __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(dy, _mm_shuffle_epi32(dy,0xb1)), 1);
+        __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,0xb1)), 1);
         for (int i = 4; i<8; i++) {
             if (!(mask&(1<<i))) continue;
             v4si new_mask = quad_mask[i];
-            v4si new_bound = new_mask?(v4si)bound:mid_bound;
-            v4si new_dx = new_mask?(v4si)dx:mid_dx;
-            v4si new_dy = new_mask?(v4si)dy:mid_dy;
-            v4si new_dz = new_mask?(v4si)dz:mid_dz;
+            v4si new_bound = new_mask?(v4si)bound:(v4si)mid_bound;
+            v4si new_dx = new_mask?(v4si)dx:(v4si)mid_dx;
+            v4si new_dy = new_mask?(v4si)dy:(v4si)mid_dy;
+            v4si new_dz = new_mask?(v4si)dz:(v4si)mid_dz;
             v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
             if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) continue; // frustum occlusion
             if (quadnode<quadtree::M) {
