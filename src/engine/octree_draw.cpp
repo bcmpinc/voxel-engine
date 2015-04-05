@@ -59,6 +59,10 @@ static const v4si DELTA[8]={
 
 const v4si nil = {};
 
+static inline int movemask_epi32(__m128i v) {
+    return _mm_movemask_ps(_mm_castsi128_ps(v));
+}
+
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
  * The bound parameter is the quadnode projected on the plane containing the furthest corner of the octree node.
@@ -73,11 +77,13 @@ static bool traverse(
 ){    
     count++;
     // Recursion
-    if (depth>=0 && bound[1] - bound[0] <= 2<<SCENE_DEPTH) {
+    int va = _mm_cvtsi128_si32((__m128i)bound);
+    int vb = _mm_extract_epi32((__m128i)bound, 1);
+    if (depth>=0 && vb - va < 2<<SCENE_DEPTH) {
+        __m128i octant = _mm_cmplt_epi32((__m128i)pos, _mm_setzero_si128());
+        int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (octnode < 0xff000000) {
             // Traverse octree
-            v4si octant = -(pos<0);
-            int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
             for (int k = 0; k<8; k++) {
                 int i = furthest^k;
                 if (!root[octnode].has_index(i)) continue;
@@ -94,8 +100,6 @@ static bool traverse(
             }
         } else {
             // Duplicate leaf node
-            v4si octant = -(pos<0);
-            int furthest = (octant[0]<<2)|(octant[1]<<1)|(octant[2]<<0);
             for (int k = 0; k<7; k++) {
                 int i = furthest^k;
                 v4si new_bound = bound<<1;
