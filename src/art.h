@@ -39,7 +39,7 @@ void flip_screen();
 
 surface get_screen();
 
-void draw_box();
+void draw_box(glm::dmat3 orientation);
 
 // void draw_cubemap(uint32_t texture); // OpenGL
 // uint32_t load_texture(const char* filename); // OpenGL

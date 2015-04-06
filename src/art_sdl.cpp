@@ -18,7 +18,6 @@
 
 #include <SDL/SDL.h>
 
-#include "events.h"
 #include "art.h"
 
 using glm::min;
@@ -137,7 +136,7 @@ static void line(glm::dvec3 va, glm::dvec3 vb, int c) {
     line(pxa,pya, pxb,pyb, c);
 }
 
-void draw_box() {
+void draw_box(glm::dmat3 orientation) {
     glm::dvec3 vertices[8]={
         glm::dvec3(-1,-1,-1),
         glm::dvec3( 1,-1,-1),
