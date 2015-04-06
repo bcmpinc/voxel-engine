@@ -207,13 +207,12 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
         // Compute position of octree corners in camera-space
         v4si vertex = (v4si)DELTA[i]<<SCENE_DEPTH;
         glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
-        v4si b = {
-           -(int)(coord.z*quadtree_bounds[0] - coord.x),
-            (int)(coord.z*quadtree_bounds[1] - coord.x),
-           -(int)(coord.z*quadtree_bounds[2] - coord.y),
+        bounds[i] = _mm_set_epi32(
             (int)(coord.z*quadtree_bounds[3] - coord.y),
-        };
-        bounds[i] = (__m128i)b;
+           -(int)(coord.z*quadtree_bounds[2] - coord.y),
+            (int)(coord.z*quadtree_bounds[1] - coord.x),
+           -(int)(coord.z*quadtree_bounds[0] - coord.x)
+        );
         if (max_z < coord.z) {
             max_z = coord.z;
             C = i;
