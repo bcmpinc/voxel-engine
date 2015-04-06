@@ -72,6 +72,15 @@ static inline __m128i blend_epi32(__m128i a, __m128i b, const int mask) {
     return _mm_castps_si128(_mm_blend_ps(_mm_castsi128_ps(a),_mm_castsi128_ps(b),mask));
 }
 
+static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
+    const __m128i nil = _mm_setzero_si128();
+    __m128i frustum = nil;
+    frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dx, nil));
+    frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dy, nil));
+    frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dz, nil));
+    return frustum;
+}
+
 #define FOR_i_IS_4_TO_7(code) \
   {const int i = 4; code} \
   {const int i = 5; code} \
@@ -140,11 +149,7 @@ static bool traverse(
                 __m128i new_dx = blend_epi32(mid_dx, dx, new_mask);
                 __m128i new_dy = blend_epi32(mid_dy, dy, new_mask);
                 __m128i new_dz = blend_epi32(mid_dz, dz, new_mask);
-                __m128i nil = _mm_setzero_si128();
-                __m128i new_frustum = nil;
-                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dx, nil));
-                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dy, nil));
-                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dz, nil));
+                __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
                 if (!movemask_epi32(_mm_cmplt_epi32(new_bound, new_frustum))) { // frustum occlusion
                     if (quadnode<quadtree::M) {
                         bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
@@ -215,11 +220,11 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
         }
     }
     __m128i pos = _mm_set_epi32(0, -(int)position.z, -(int)position.y, -(int)position.x);
-    v4si new_dx = (bounds[C^DX]-bounds[C]);
-    v4si new_dy = (bounds[C^DY]-bounds[C]);
-    v4si new_dz = (bounds[C^DZ]-bounds[C]);
-    v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-    traverse(-1, 0, (__m128i)bounds[C], (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, SCENE_DEPTH-1);
+    __m128i new_dx = (__m128i)(bounds[C^DX]-bounds[C]);
+    __m128i new_dy = (__m128i)(bounds[C^DY]-bounds[C]);
+    __m128i new_dz = (__m128i)(bounds[C^DZ]-bounds[C]);
+    __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
+    traverse(-1, 0, (__m128i)bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
