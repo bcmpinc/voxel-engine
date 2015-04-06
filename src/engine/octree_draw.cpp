@@ -35,9 +35,6 @@ static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
 
-// Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
-typedef int32_t v4si __attribute__ ((vector_size (16)));
-
 constexpr static int make_mask(int a, int b, int c, int d) {
     return (a<<0)+(b<<1)+(c<<2)+(d<<3);
 }
@@ -205,7 +202,8 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     int max_z=-1<<31;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
-        v4si vertex = (v4si)DELTA[i]<<SCENE_DEPTH;
+        __m128i vert = _mm_slli_epi32(DELTA[i], SCENE_DEPTH);
+        int * vertex = (int*)&vert;
         glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
         bounds[i] = _mm_set_epi32(
             (int)(coord.z*quadtree_bounds[3] - coord.y),
