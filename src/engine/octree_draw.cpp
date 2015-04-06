@@ -84,6 +84,25 @@ static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
   {const int i = 6; code} \
   {const int i = 7; code} 
 
+#define FOR_k_IS_0_TO_7(code) \
+  {const int k = 0; code} \
+  {const int k = 1; code} \
+  {const int k = 2; code} \
+  {const int k = 3; code} \
+  {const int k = 4; code} \
+  {const int k = 5; code} \
+  {const int k = 6; code} \
+  {const int k = 7; code} 
+
+#define FOR_k_IS_0_TO_6(code) \
+  {const int k = 0; code} \
+  {const int k = 1; code} \
+  {const int k = 2; code} \
+  {const int k = 3; code} \
+  {const int k = 4; code} \
+  {const int k = 5; code} \
+  {const int k = 6; code}
+
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
  * The bound parameter is the quadnode projected on the plane containing the furthest corner of the octree node.
@@ -106,30 +125,33 @@ static bool traverse(
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (octnode < 0xff000000) {
             // Traverse octree
-            for (int k = 0; k<8; k++) {
+            FOR_k_IS_0_TO_7({
                 int i = furthest^k;
-                if (!root[octnode].has_index(i)) continue;
-                int j = root[octnode].position(i);
-                __m128i new_bound = _mm_slli_epi32(bound, 1);
-                if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,dx);
-                if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,dy);
-                if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,dz);
-                if (movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) continue; // frustum occlusion
-                count_oct++;
-                if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
-            }
+                if (root[octnode].has_index(i)) {
+                    int j = root[octnode].position(i);
+                    __m128i new_bound = _mm_slli_epi32(bound, 1);
+                    if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,dx);
+                    if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,dy);
+                    if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,dz);
+                    if (!movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) { // frustum occlusion
+                        count_oct++;
+                        if (traverse(quadnode, root[octnode].child[j], new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                    }
+                }
+            });
         } else {
             // Duplicate leaf node
-            for (int k = 0; k<7; k++) {
+            FOR_k_IS_0_TO_6({
                 int i = furthest^k;
                 __m128i new_bound = _mm_slli_epi32(bound, 1);
                 if ((C^i)&DX) new_bound = _mm_add_epi32(new_bound,dx);
                 if ((C^i)&DY) new_bound = _mm_add_epi32(new_bound,dy);
                 if ((C^i)&DZ) new_bound = _mm_add_epi32(new_bound,dz);
-                if (movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) continue; // frustum occlusion
-                count_oct++;
-                if (traverse(quadnode, octnode, new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
-            }
+                if (!movemask_epi32(_mm_cmplt_epi32(new_bound, frustum))) { // frustum occlusion
+                    count_oct++;
+                    if (traverse(quadnode, octnode, new_bound, dx, dy, dz, frustum, _mm_add_epi32(pos, _mm_slli_epi32(DELTA[i], depth)), depth-1)) return true;
+                }
+            });
         }
         return false;
     } else {
