@@ -201,7 +201,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     Timer t_query;
     count_oct = count_quad = count = 0;
     // Do the actual rendering of the scene (i.e. execute the query).
-    v4si bounds[8];
+    __m128i bounds[8];
     int max_z=-1<<31;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
@@ -213,18 +213,18 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
            -(int)(coord.z*quadtree_bounds[2] - coord.y),
             (int)(coord.z*quadtree_bounds[3] - coord.y),
         };
-        bounds[i] = b;
+        bounds[i] = (__m128i)b;
         if (max_z < coord.z) {
             max_z = coord.z;
             C = i;
         }
     }
     __m128i pos = _mm_set_epi32(0, -(int)position.z, -(int)position.y, -(int)position.x);
-    __m128i new_dx = (__m128i)(bounds[C^DX]-bounds[C]);
-    __m128i new_dy = (__m128i)(bounds[C^DY]-bounds[C]);
-    __m128i new_dz = (__m128i)(bounds[C^DZ]-bounds[C]);
+    __m128i new_dx = _mm_sub_epi32(bounds[C^DX], bounds[C]);
+    __m128i new_dy = _mm_sub_epi32(bounds[C^DY], bounds[C]);
+    __m128i new_dz = _mm_sub_epi32(bounds[C^DZ], bounds[C]);
     __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
-    traverse(-1, 0, (__m128i)bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
+    traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
     
     
     timer_query = t_query.elapsed();
