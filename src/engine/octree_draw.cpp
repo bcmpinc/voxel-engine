@@ -64,8 +64,6 @@ static const __m128i DELTA[8]={
     _mm_set_epi32(0, 1, 1, 1),
 };
 
-const v4si nil = {};
-
 static inline int movemask_epi32(__m128i v) {
     return _mm_movemask_ps(_mm_castsi128_ps(v));
 }
@@ -135,17 +133,21 @@ static bool traverse(
         __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(dx, _mm_shuffle_epi32(dx,0xb1)), 1);
         __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(dy, _mm_shuffle_epi32(dy,0xb1)), 1);
         __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,0xb1)), 1);
-        FOR_i_IS_4_TO_7({
+        FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
             if (mask&(1<<i)) {
                 const int new_mask = quad_mask[i];
-                v4si new_bound = (v4si)blend_epi32(mid_bound, bound, new_mask);
-                v4si new_dx = (v4si)blend_epi32(mid_dx, dx, new_mask);
-                v4si new_dy = (v4si)blend_epi32(mid_dy, dy, new_mask);
-                v4si new_dz = (v4si)blend_epi32(mid_dz, dz, new_mask);
-                v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-                if (!movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) { // frustum occlusion
+                __m128i new_bound = blend_epi32(mid_bound, bound, new_mask);
+                __m128i new_dx = blend_epi32(mid_dx, dx, new_mask);
+                __m128i new_dy = blend_epi32(mid_dy, dy, new_mask);
+                __m128i new_dz = blend_epi32(mid_dz, dz, new_mask);
+                __m128i nil = _mm_setzero_si128();
+                __m128i new_frustum = nil;
+                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dx, nil));
+                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dy, nil));
+                new_frustum = _mm_sub_epi32(new_frustum, _mm_max_epi32(new_dz, nil));
+                if (!movemask_epi32(_mm_cmplt_epi32(new_bound, new_frustum))) { // frustum occlusion
                     if (quadnode<quadtree::M) {
-                        bool r = traverse(quadnode*4+i, octnode, (__m128i)new_bound, (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, depth);
+                        bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
                         mask &= ~(r<<i); 
                         count_quad++;
                     } else if (octnode < 0xff000000u) {
