@@ -38,9 +38,16 @@ static int count, count_oct, count_quad;
 // Array with x1, x2, y1, y2. Note that x2-x1 = y2-y1.
 typedef int32_t v4si __attribute__ ((vector_size (16)));
 
-const v4si quad_mask[8] = {
-    {},{},{},{},
-    {1,0,0,1},{0,1,0,1},{1,0,1,0},{0,1,1,0},
+constexpr static int make_mask(int a, int b, int c, int d) {
+    return (a<<0)+(b<<1)+(c<<2)+(d<<3);
+}
+
+const int quad_mask[8] = {
+    0,0,0,0,
+    make_mask(1,0,0,1),
+    make_mask(0,1,0,1),
+    make_mask(1,0,1,0),
+    make_mask(0,1,1,0),
 };
 
 static const int32_t SCENE_DEPTH = 26;
@@ -62,6 +69,16 @@ const v4si nil = {};
 static inline int movemask_epi32(__m128i v) {
     return _mm_movemask_ps(_mm_castsi128_ps(v));
 }
+
+static inline __m128i blend_epi32(__m128i a, __m128i b, const int mask) {
+    return _mm_castps_si128(_mm_blend_ps(_mm_castsi128_ps(a),_mm_castsi128_ps(b),mask));
+}
+
+#define FOR_i_IS_4_TO_7(code) \
+  {const int i = 4; code} \
+  {const int i = 5; code} \
+  {const int i = 6; code} \
+  {const int i = 7; code} 
 
 /** Returns true if quadtree node is rendered 
  * Function is assumed to be called only if quadtree node is not yet fully rendered.
@@ -118,27 +135,29 @@ static bool traverse(
         __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(dx, _mm_shuffle_epi32(dx,0xb1)), 1);
         __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(dy, _mm_shuffle_epi32(dy,0xb1)), 1);
         __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,0xb1)), 1);
-        for (int i = 4; i<8; i++) {
-            if (!(mask&(1<<i))) continue;
-            v4si new_mask = quad_mask[i];
-            v4si new_bound = new_mask?(v4si)bound:(v4si)mid_bound;
-            v4si new_dx = new_mask?(v4si)dx:(v4si)mid_dx;
-            v4si new_dy = new_mask?(v4si)dy:(v4si)mid_dy;
-            v4si new_dz = new_mask?(v4si)dz:(v4si)mid_dz;
-            v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
-            if (movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) continue; // frustum occlusion
-            if (quadnode<quadtree::M) {
-                bool r = traverse(quadnode*4+i, octnode, (__m128i)new_bound, (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, depth);
-                mask &= ~(r<<i); 
-                count_quad++;
-            } else if (octnode < 0xff000000u) {
-                face.draw(quadnode*4+i, root[octnode].avgcolor); // Rendering
-                mask &= ~(1<<i);
-            } else {
-                face.draw(quadnode*4+i, octnode); // Rendering
-                mask &= ~(1<<i);
+        FOR_i_IS_4_TO_7({
+            if (mask&(1<<i)) {
+                const int new_mask = quad_mask[i];
+                v4si new_bound = (v4si)blend_epi32(mid_bound, bound, new_mask);
+                v4si new_dx = (v4si)blend_epi32(mid_dx, dx, new_mask);
+                v4si new_dy = (v4si)blend_epi32(mid_dy, dy, new_mask);
+                v4si new_dz = (v4si)blend_epi32(mid_dz, dz, new_mask);
+                v4si new_frustum = (new_dx>0)*new_dx + (new_dy>0)*new_dy + (new_dz>0)*new_dz;
+                if (!movemask_epi32(_mm_cmplt_epi32((__m128i)new_bound, (__m128i)new_frustum))) { // frustum occlusion
+                    if (quadnode<quadtree::M) {
+                        bool r = traverse(quadnode*4+i, octnode, (__m128i)new_bound, (__m128i)new_dx, (__m128i)new_dy, (__m128i)new_dz, (__m128i)new_frustum, pos, depth);
+                        mask &= ~(r<<i); 
+                        count_quad++;
+                    } else if (octnode < 0xff000000u) {
+                        face.draw(quadnode*4+i, root[octnode].avgcolor); // Rendering
+                        mask &= ~(1<<i);
+                    } else {
+                        face.draw(quadnode*4+i, octnode); // Rendering
+                        mask &= ~(1<<i);
+                    }
+                }
             }
-        }
+        });
         face.children[quadnode] = mask;
         return mask == 0;
     }
