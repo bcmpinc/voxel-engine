@@ -69,6 +69,7 @@ static inline __m128i blend_epi32(__m128i a, __m128i b, const int mask) {
     return _mm_castps_si128(_mm_blend_ps(_mm_castsi128_ps(a),_mm_castsi128_ps(b),mask));
 }
 
+/** Computes the sum max(dx,0)+max(dy,0)+max(dz,0). */
 static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
     const __m128i nil = _mm_setzero_si128();
     __m128i frustum = nil;
@@ -103,12 +104,16 @@ static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
   {const int k = 5; code} \
   {const int k = 6; code}
 
-/** Returns true if quadtree node is rendered 
- * Function is assumed to be called only if quadtree node is not yet fully rendered.
- * The bound parameter is the quadnode projected on the plane containing the furthest corner of the octree node.
- * The dx,dy,dz values represent how this projection changes when traversing an edge to one of the other corners.
- * Furthermore, pos is the location of the center of the octree node, relative to the viewer in octree space.
- * For leaf nodes (and their 'childs') octnode will be a color and >= 0xff000000u.
+/** Core of the voxel rendering algorithm.
+ * @param quadnode the index of the quadnode that will be rendered to. It is assumed that it is not yet fully rendered.
+ * @param octnode the index of the current octree node that is being rendered. For leaf nodes (and their 'childs') octnode will be a color and >= 0xff000000u.
+ * @param bound is the quadnode projected on the parallel plane containing the furthest corner of the current octree node.
+ *              It stores the distance from this furthest corner to the (left, right, top, bottom) edge of the projected quadnode.
+ * @param dx,dy,dz represent how this projection changes when traversing an edge to one of the other corners.
+ * @param frustum equal to `compute_frustum(dx,dy,dz)`, a magic variable used for frustum occlusion.
+ * @param pos is the location of the center of the octree node, relative to the viewer in octree space.
+ * @param depth limits the number of nested traverse calls, to prevent stack overflows.
+ * @return true if quadtree node is rendered 
  */
 static bool traverse(
     const int32_t quadnode, const uint32_t octnode,
