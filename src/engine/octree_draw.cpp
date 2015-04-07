@@ -192,14 +192,17 @@ static bool traverse(
     }
 }
 
-/** Render the octree to the OpenGL cubemap texture. 
+/** Render the octree to the provided surface for the given viewpane, position and orientation.
+ * @param file the octree that is being rendered.
+ * @param surf the surface that is being rendered to.
+ * @param position the position of the camera.
+ * @param orientation the orientation of the camera (which is assumed to be orthogonal).
  */
 void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 position, glm::dmat3 orientation) {
     Timer t_global;
     
     double timer_prepare;
     double timer_query;
-    double timer_transfer;
     
     assert(quadtree::SIZE >= surf.width);
     assert(quadtree::SIZE >= surf.height);
@@ -214,10 +217,8 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     face.surf = surf;
     
     Timer t_prepare;
-        
     // Prepare the occlusion quadtree
     face.build();
-    
     timer_prepare = t_prepare.elapsed();
 
     Timer t_query;
@@ -247,18 +248,9 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     __m128i new_dz = _mm_sub_epi32(bounds[C^DZ], bounds[C]);
     __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
     traverse(-1, 0, bounds[C], new_dx, new_dy, new_dz, new_frustum, pos, SCENE_DEPTH-1);
-    
-    
     timer_query = t_query.elapsed();
 
-    Timer t_transfer;
-    
-    // Send the image data to OpenGL.
-    // glTexImage2D( cubetargets[i], 0, 4, quadtree::SIZE, quadtree::SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, face.face);
-    
-    timer_transfer = t_transfer.elapsed();
-            
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f Transfer:%5.2f | Count:%10d Oct:%10d Quad:%10d\n", t_global.elapsed(), timer_prepare, timer_query, timer_transfer, count, count_oct, count_quad);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f | Count:%10d Oct:%10d Quad:%10d\n", t_global.elapsed(), timer_prepare, timer_query, count, count_oct, count_quad);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
