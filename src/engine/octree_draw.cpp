@@ -122,10 +122,8 @@ static bool traverse(
 ){    
     count++;
     // Recursion
-    // int delta = _mm_cvtsi128_si32(_mm_hadd_epi32(bound,bound));
-    int va = _mm_cvtsi128_si32(bound);
-    int vb = _mm_extract_epi32(bound, 1);
-    if (depth>=0 && vb + va < 2<<SCENE_DEPTH) {
+    int delta = _mm_cvtsi128_si32(_mm_hadd_epi32(bound,bound));
+    if (depth>=0 && delta < 2<<SCENE_DEPTH) {
         __m128i octant = _mm_cmplt_epi32(pos, _mm_setzero_si128());
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (octnode < 0xff000000) {
