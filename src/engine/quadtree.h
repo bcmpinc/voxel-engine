@@ -23,7 +23,7 @@
 
 struct quadtree {
 public:
-    static const uint32_t dim = 10;
+    static const uint32_t dim = 13;
     static const uint32_t SIZE = 1<<dim;
     static const int N = (1<<dim<<dim)/3-1;
     static const int M = N/4-1;

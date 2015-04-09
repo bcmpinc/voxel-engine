@@ -23,14 +23,14 @@
 #include "surface.h"
 #include "octree.h"
 
-#define SCREEN_FULLSCREEN  0
+#define SCREEN_FULLSCREEN  1
 
 #if SCREEN_FULLSCREEN == 1
-# define SCREEN_WIDTH    1920
-# define SCREEN_HEIGHT   1080
+static const int SCREEN_WIDTH  = 1920;
+static const int SCREEN_HEIGHT = 1080;
 #else
-# define SCREEN_WIDTH    1024
-# define SCREEN_HEIGHT    768
+static const int SCREEN_WIDTH  = 1024;
+static const int SCREEN_HEIGHT =  768;
 #endif
 
 void init_screen(const char * caption);

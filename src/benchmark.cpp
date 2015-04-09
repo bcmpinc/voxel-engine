@@ -62,7 +62,7 @@ static const Scene scene [] = {
 };
 
 static const int scenes = sizeof(scene)/sizeof(scene[0]);
-static const int N = 5;
+static const int N = 0;
 static double results[scenes];
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -73,6 +73,8 @@ int main(int argc, char ** argv) {
         mkdir("bshots",0755);
     }
 
+    surface fsaa(new uint32_t[SCREEN_WIDTH*SCREEN_HEIGHT*16], SCREEN_WIDTH*4, SCREEN_HEIGHT*4);
+    
     // mainloop
     for (int i=0; i<scenes; i++) {
         // Load file
@@ -88,28 +90,60 @@ int main(int argc, char ** argv) {
         double times[N];
         for (int j=-1; j<N; j++) {
             Timer t;
-            clear_screen();
-            octree_draw(&in, get_screen(), get_view_pane(), position, orientation);
+            //clear_screen();
+            std::fill_n(fsaa.data, fsaa.width*fsaa.height, 0xaaccffu);
+            octree_draw(&in, fsaa, get_view_pane(), position, orientation);
+            surface s = get_screen();
+            for (int y=0; y<SCREEN_HEIGHT; y++) {
+                for (int x=0; x<SCREEN_WIDTH; x++) {
+                    uint64_t c = 0x0200020002;
+                    c += (fsaa.data[x*4+0+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+1+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+2+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+3+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+0+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+1+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+2+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+3+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+0+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+1+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+2+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+3+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+0+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+1+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+2+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c += (fsaa.data[x*4+3+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                    c >>= 4;
+                    c &= 0x0000ff0000ff00ff;
+                    c |= c >> 32;
+                    c &= 0xffffff;
+                    s.pixel(x,y,c);
+                }
+            }
             flip_screen();
             if (j>=0) {
                 times[j] = t.elapsed();
             }
         }
         
-        // Print results
-        printf("Test %2d:", i);
-        for (int j=0; j<N; j++) {
-            printf(" %7.2f", times[j]);
+        if (N>0) {
+            // Print results
+            printf("Test %2d:", i);
+            for (int j=0; j<N; j++) {
+                printf(" %7.2f", times[j]);
+            }
         }
         
-        // Compute average
-        std::sort(times,times+N);
-        results[i]=0;
-        for (int j=1; j<N-1; j++) {
-            results[i] += times[j];
+        if (N>2) {
+            // Compute average
+            std::sort(times,times+N);
+            results[i]=0;
+            for (int j=1; j<N-1; j++) {
+                results[i] += times[j];
+            }
+            results[i] /= N-2;
+            printf(" | %7.2f\n", results[i]);
         }
-        results[i] /= N-2;
-        printf(" | %7.2f\n", results[i]);
         fflush(stdout);
         
         // Output png
