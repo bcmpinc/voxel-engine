@@ -62,5 +62,7 @@ add_target(convert2  SOURCE src/convert2.cpp  REQUIRED engine)
 add_target(ascii2bin SOURCE src/ascii2bin.cpp REQUIRED engine)
 add_target(heightmap SOURCE src/heightmap.cpp REQUIRED engine SDL SDL_image)
 add_target(build_db  SOURCE src/build_db.cpp  REQUIRED engine)
+
+add_target(holes     SOURCE src/holes.cpp)
     
 message(STATUS "Buildable Targets: ${BUILDABLE_TARGETS}")

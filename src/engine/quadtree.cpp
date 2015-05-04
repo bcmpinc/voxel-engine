@@ -32,7 +32,7 @@ void quadtree::set(uint32_t x, uint32_t y) {
     children[v/4] &= ~(16<<(v&3));
 }
 
-void quadtree::draw(uint32_t v, uint32_t color) {
+void quadtree::draw(uint32_t v, uint32_t color, uint32_t depth) {
     // Uses 5-10 ms per frame.
     // children[v/4] &= ~(16<<(v&3)); // Moved to octree_draw.
     v -= N;
@@ -46,13 +46,13 @@ void quadtree::draw(uint32_t v, uint32_t color) {
     }
     x &= 0xffff;
     y &= 0xffff;
-    pixel(x, y, color);
-}
 
-void quadtree::pixel(uint32_t x, uint32_t y, uint32_t c) {
     assert(x<surf.width && y<surf.height);
     int64_t i = x+y*surf.width;
-    surf.data[i] = c;
+    surf.data[i] = color;
+    if (surf.depth) {
+        surf.depth[i] = depth;
+    }
 }
 
 quadtree::quadtree() {}

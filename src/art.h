@@ -23,7 +23,7 @@
 #include "surface.h"
 #include "octree.h"
 
-#define SCREEN_FULLSCREEN  1
+#define SCREEN_FULLSCREEN  0
 
 #if SCREEN_FULLSCREEN == 1
 static const int SCREEN_WIDTH  = 1920;

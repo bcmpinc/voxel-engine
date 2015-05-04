@@ -34,6 +34,7 @@ static quadtree face;
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
+static glm::dvec3 look_dir;
 
 constexpr static int make_mask(int a, int b, int c, int d) {
     return (a<<0)+(b<<1)+(c<<2)+(d<<3);
@@ -177,12 +178,17 @@ static bool traverse(
                         bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
                         mask &= ~(r<<i); 
                         count_quad++;
-                    } else if (octnode < 0xff000000u) {
-                        face.draw(quadnode*4+i, root[octnode].avgcolor); // Rendering
-                        mask &= ~(1<<i);
                     } else {
-                        face.draw(quadnode*4+i, octnode); // Rendering
-                        mask &= ~(1<<i);
+                        glm::dvec3 dpos(_mm_extract_epi32(pos, 0), _mm_extract_epi32(pos, 1), _mm_extract_epi32(pos, 2));
+                        double depth = glm::dot(dpos, look_dir);
+                        uint32_t udepth(depth);
+                        if (octnode < 0xff000000u) {
+                            face.draw(quadnode*4+i, root[octnode].avgcolor, udepth); // Rendering
+                            mask &= ~(1<<i);
+                        } else {
+                            face.draw(quadnode*4+i, octnode, udepth); // Rendering
+                            mask &= ~(1<<i);
+                        }
                     }
                 }
             }
@@ -215,6 +221,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
 
     root = file->root;
     face.surf = surf;
+    look_dir = glm::dvec3(0,0,1) * orientation;
     
     Timer t_prepare;
     // Prepare the occlusion quadtree

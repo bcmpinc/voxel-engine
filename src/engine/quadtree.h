@@ -23,7 +23,7 @@
 
 struct quadtree {
 public:
-    static const uint32_t dim = 13;
+    static const uint32_t dim = 10;
     static const uint32_t SIZE = 1<<dim;
     static const int N = (1<<dim<<dim)/3-1;
     static const int M = N/4-1;
@@ -45,16 +45,12 @@ public:
     quadtree(surface surf);
 
     /** Draws the pixel associated with the given leafnode. */
-    void draw(uint32_t v, uint32_t color);
+    void draw(uint32_t v, uint32_t color, uint32_t depth);
     
     /** Initializes the quadtree such that all quadtree nodes within view are set to 1. */    
     void build();
     
 private:
-    /** Draws a single pixel in the provided pixel buffer. 
-     * The pixel coordinates must be within bounds. */
-    void pixel(uint32_t x, uint32_t y, uint32_t c);
-
     /** Sets a single value at given coordinates on the bottom level of the tree. (unused) 
      * Does not propagate this value through the rest of the tree. */
     void set(uint32_t x, uint32_t y);
