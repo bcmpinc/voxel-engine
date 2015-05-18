@@ -176,7 +176,7 @@ void draw_box(glm::dmat3 orientation) {
 }
 
 surface get_screen() {
-    return surface(pixs, SCREEN_WIDTH, SCREEN_HEIGHT);
+    return surface(SCREEN_WIDTH, SCREEN_HEIGHT, pixs);
 }
 
 namespace frustum {

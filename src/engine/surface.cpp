@@ -20,14 +20,47 @@
 # define FOUND_PNG
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include "surface.h"
 
-void surface::pixel(uint32_t x, uint32_t y, uint32_t c) {
-    assert(x<width && y<height);
-    int64_t i = x+y*(width);
-    data[i] = c;
+surface::surface() : refs(nullptr), data(nullptr), depth(nullptr), width(0), height(0) {}
+
+surface::surface(const surface& src) : refs(src.refs), data(src.data), depth(src.depth), width(src.width), height(src.height) {
+    if (refs) {
+        ++*refs; // Increment ref-counter
+    }
 }
+
+surface::surface(uint32_t width, uint32_t height, bool depth) : refs(new uint32_t(1)), data(new uint32_t[width*height]), depth(depth?new uint32_t[width*height]:nullptr), width(width), height(height) {
+    assert(width > 0);
+    assert(height > 0);
+}
+
+surface::surface(uint32_t width, uint32_t height, uint32_t * data, uint32_t * depth) : refs(nullptr), data(data), depth(depth), width(width), height(height) {}
+
+surface::~surface() {
+    if (refs && --*refs == 0) {
+        delete refs;
+        delete data;
+        delete depth;
+    }
+}
+
+surface& surface::operator=(const surface& src) {
+    if (refs && refs == src.refs) return *this; // Copying self.
+    this->~surface(); // Release current
+    refs = src.refs;
+    data = src.data;
+    depth = src.depth;
+    width = src.width;
+    height = src.height;
+    if (refs) {
+        ++*refs; // Increment ref-counter
+    }
+    return *this;
+}
+
 
 #ifdef FOUND_PNG
 # include <png.h>
@@ -51,3 +84,70 @@ void surface::export_png(const char * out) {
 #else
 void export_png(const char * out) {}
 #endif
+
+void surface::pixel(uint32_t x, uint32_t y, uint32_t c) {
+    assert(x<width && y<height);
+    int64_t i = x+y*(width);
+    data[i] = c;
+}
+
+void surface::clear(uint32_t c) {
+    std::fill_n(data, width*height, c);
+}
+
+surface surface::scale(int n, bool depth) {
+    return surface(width*n, height*n, depth);
+}
+
+void surface::copy(surface source) {
+    assert(data);
+    assert(source.data);
+    if (width == source.width) {
+        assert(height == source.height);
+        std::copy_n(source.data, width*height, data);
+    } else if (2*width == source.width) {
+        assert(2*height == source.height);
+        for (unsigned int y=0; y<height; y++) {
+            for (unsigned int x=0; x<width; x++) {
+                uint64_t c = 0x0200020002;
+                c += (source.data[x*2+0+(y*2+0)*width*2] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*2+1+(y*2+0)*width*2] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*2+0+(y*2+1)*width*2] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*2+1+(y*2+1)*width*2] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c >>= 2;
+                c &= 0x0000ff0000ff00ff;
+                c |= c >> 32;
+                c &= 0xffffff;
+                pixel(x,y,c);
+            }
+        }
+    } else if (4*width == source.width) {
+        assert(4*height == source.height);
+        for (unsigned int y=0; y<height; y++) {
+            for (unsigned int x=0; x<width; x++) {
+                uint64_t c = 0x0200020002;
+                c += (source.data[x*4+0+(y*4+0)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+1+(y*4+0)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+2+(y*4+0)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+3+(y*4+0)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+0+(y*4+1)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+1+(y*4+1)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+2+(y*4+1)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+3+(y*4+1)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+0+(y*4+2)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+1+(y*4+2)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+2+(y*4+2)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+3+(y*4+2)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+0+(y*4+3)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+1+(y*4+3)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+2+(y*4+3)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c += (source.data[x*4+3+(y*4+3)*width*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
+                c >>= 4;
+                c &= 0x0000ff0000ff00ff;
+                c |= c >> 32;
+                c &= 0xffffff;
+                pixel(x,y,c);
+            }
+        }
+    }
+}

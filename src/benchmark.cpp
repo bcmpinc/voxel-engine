@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2015  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@
 #include "art.h"
 #include "octree.h"
 
+// #define FSAA_TEST
+
 using namespace std;
 
 struct Scene {
@@ -62,8 +64,13 @@ static const Scene scene [] = {
 };
 
 static const int scenes = sizeof(scene)/sizeof(scene[0]);
-static const int N = 0;
 static double results[scenes];
+
+#ifdef FSAA_TEST
+static const int N = 0;
+#else
+static const int N = 5;
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +80,8 @@ int main(int argc, char ** argv) {
         mkdir("bshots",0755);
     }
 
-    surface fsaa(new uint32_t[SCREEN_WIDTH*SCREEN_HEIGHT*16], SCREEN_WIDTH*4, SCREEN_HEIGHT*4);
+    surface surf(get_screen());
+    surface fsaa(surf.scale(4));
     
     // mainloop
     for (int i=0; i<scenes; i++) {
@@ -90,36 +98,14 @@ int main(int argc, char ** argv) {
         double times[N];
         for (int j=-1; j<N; j++) {
             Timer t;
-            //clear_screen();
-            std::fill_n(fsaa.data, fsaa.width*fsaa.height, 0xaaccffu);
+#ifdef FSAA_TEST
+            fsaa.clear(0xaaccffu);
             octree_draw(&in, fsaa, get_view_pane(), position, orientation);
-            surface s = get_screen();
-            for (int y=0; y<SCREEN_HEIGHT; y++) {
-                for (int x=0; x<SCREEN_WIDTH; x++) {
-                    uint64_t c = 0x0200020002;
-                    c += (fsaa.data[x*4+0+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+1+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+2+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+3+(y*4+0)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+0+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+1+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+2+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+3+(y*4+1)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+0+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+1+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+2+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+3+(y*4+2)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+0+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+1+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+2+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c += (fsaa.data[x*4+3+(y*4+3)*SCREEN_WIDTH*4] * 0x100000001uL) & 0x0000ff0000ff00ff;
-                    c >>= 4;
-                    c &= 0x0000ff0000ff00ff;
-                    c |= c >> 32;
-                    c &= 0xffffff;
-                    s.pixel(x,y,c);
-                }
-            }
+            surf.copy(fsaa);
+#else
+            clear_screen();
+            octree_draw(&in, surf, get_view_pane(), position, orientation);
+#endif
             flip_screen();
             if (j>=0) {
                 times[j] = t.elapsed();

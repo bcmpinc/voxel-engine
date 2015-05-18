@@ -62,14 +62,16 @@ int main(int argc, char *argv[]) {
     init_screen("Voxel renderer");
     position = glm::dvec3(0, 0, 0);
     Capture c;
-#ifdef FOUND_LIBAV
     if (capture) {
+#ifdef FOUND_LIBAV
         char capturefile[32];
         mkdir("capture",0755);
         sprintf(capturefile, "capture/cap%08d.mp4", getpid());
         c = Capture(capturefile, get_screen());
-    }
+#else
+        fprintf(stderr, "Cannot capture: compiled without libffmpeg\n");
 #endif
+    }
 
     surface surf = get_screen();
     surf.depth = new uint32_t[surf.width * surf.height];
