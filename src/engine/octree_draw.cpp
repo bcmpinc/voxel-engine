@@ -40,7 +40,7 @@ constexpr static int make_mask(int a, int b, int c, int d) {
     return (a<<0)+(b<<1)+(c<<2)+(d<<3);
 }
 
-const int quad_mask[8] = {
+constexpr int quad_mask[8] = {
     0,0,0,0,
     make_mask(1,0,0,1),
     make_mask(0,1,0,1),
@@ -66,7 +66,9 @@ static inline int movemask_epi32(__m128i v) {
     return _mm_movemask_ps(_mm_castsi128_ps(v));
 }
 
-static inline __m128i blend_epi32(__m128i a, __m128i b, const int mask) {
+// Passing mask as a template parameter, as it must be a compile time constant.
+template<int mask>
+static inline __m128i blend_epi32(__m128i a, __m128i b) {
     return _mm_castps_si128(_mm_blend_ps(_mm_castsi128_ps(a),_mm_castsi128_ps(b),mask));
 }
 
@@ -81,20 +83,20 @@ static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
 }
 
 #define FOR_i_IS_4_TO_7(code) \
-  {const int i = 4; code} \
-  {const int i = 5; code} \
-  {const int i = 6; code} \
-  {const int i = 7; code} 
+  {constexpr int i = 4; code} \
+  {constexpr int i = 5; code} \
+  {constexpr int i = 6; code} \
+  {constexpr int i = 7; code} 
 
 #define FOR_k_IS_0_TO_7(code) \
-  {const int k = 0; code} \
-  {const int k = 1; code} \
-  {const int k = 2; code} \
-  {const int k = 3; code} \
-  {const int k = 4; code} \
-  {const int k = 5; code} \
-  {const int k = 6; code} \
-  {const int k = 7; code} 
+  {constexpr int k = 0; code} \
+  {constexpr int k = 1; code} \
+  {constexpr int k = 2; code} \
+  {constexpr int k = 3; code} \
+  {constexpr int k = 4; code} \
+  {constexpr int k = 5; code} \
+  {constexpr int k = 6; code} \
+  {constexpr int k = 7; code} 
 
 #define FOR_k_IS_0_TO_6(code) \
   {const int k = 0; code} \
@@ -167,11 +169,11 @@ static bool traverse(
         __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(dz, _mm_shuffle_epi32(dz,0xb1)), 1);
         FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
             if (mask&(1<<i)) {
-                const int new_mask = quad_mask[i];
-                __m128i new_bound = blend_epi32(mid_bound, bound, new_mask);
-                __m128i new_dx = blend_epi32(mid_dx, dx, new_mask);
-                __m128i new_dy = blend_epi32(mid_dy, dy, new_mask);
-                __m128i new_dz = blend_epi32(mid_dz, dz, new_mask);
+                constexpr int new_mask = quad_mask[i];
+                __m128i new_bound = blend_epi32<new_mask>(mid_bound, bound);
+                __m128i new_dx = blend_epi32<new_mask>(mid_dx, dx);
+                __m128i new_dy = blend_epi32<new_mask>(mid_dy, dy);
+                __m128i new_dz = blend_epi32<new_mask>(mid_dz, dz);
                 __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
                 if (!movemask_epi32(_mm_cmplt_epi32(new_bound, new_frustum))) { // frustum occlusion
                     if (quadnode<quadtree::M) {
