@@ -223,7 +223,10 @@ void surface::apply_ssao(double radius, double projection) {
                 }
             }
             count = clamp(count, 0, 16);
-            data[i] = modulate(data[i], count/16.0);
+            double light = count/16.0;
+            light *= light;
+            light *= light;
+            data[i] = modulate(data[i], light);
         }
     }
 }
