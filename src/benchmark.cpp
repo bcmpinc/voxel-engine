@@ -32,7 +32,7 @@
 #include "art.h"
 #include "octree.h"
 
-// #define FSAA_TEST
+// #define SSAA_TEST
 
 using namespace std;
 
@@ -66,7 +66,7 @@ static const Scene scene [] = {
 static const int scenes = sizeof(scene)/sizeof(scene[0]);
 static double results[scenes];
 
-#ifdef FSAA_TEST
+#ifdef SSAA_TEST
 static const int N = 0;
 #else
 static const int N = 5;
@@ -98,7 +98,7 @@ int main(int argc, char ** argv) {
         double times[N];
         for (int j=-1; j<N; j++) {
             Timer t;
-#ifdef FSAA_TEST
+#ifdef SSAA_TEST
             fsaa.clear(0xaaccffu);
             octree_draw(&in, fsaa, get_view_pane(), position, orientation);
             surf.copy(fsaa);
