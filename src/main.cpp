@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         if (moves) {
             surf.clear(0xaaccffu);
             octree_draw(&in, surf, get_view_pane(),position, orientation);
-            surf.apply_ssao(20,0.1);
+            // surf.apply_ssao(20,0.1);
             //draw_box(orientation);
 
             c.shoot();
