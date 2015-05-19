@@ -22,6 +22,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <random>
+#include <glm/glm.hpp>
 #include "surface.h"
 
 surface::surface() : refs(nullptr), data(nullptr), depth(nullptr), width(0), height(0) {}
@@ -93,6 +95,9 @@ void surface::pixel(uint32_t x, uint32_t y, uint32_t c) {
 
 void surface::clear(uint32_t c) {
     std::fill_n(data, width*height, c);
+    if (depth) {
+        std::fill_n(depth, width*height, ~0u);
+    }
 }
 
 surface surface::scale(int n, bool depth) {
@@ -149,5 +154,77 @@ void surface::copy(surface source) {
                 pixel(x,y,c);
             }
         }
+    } else {
+        assert(!"Cannot match sizes");
     }
 }
+
+static bool ssao_initalized = false;
+static const int SSAO_PROBES = 1024;
+static glm::dvec4 ssao_probe[SSAO_PROBES]; 
+static void ssao_init() {
+    if (ssao_initalized) return;
+    std::mt19937_64 rand;
+    std::uniform_real_distribution<> disc(-1, 1);
+    for (int i=0; i<SSAO_PROBES; i++) {
+        glm::dvec4 v;
+        do {
+            v = glm::dvec4(disc(rand),disc(rand),disc(rand), 0);
+        } while (glm::dot(v,v) > 1);
+        v.a = -sqrt(1 - v.x*v.x - v.y*v.y);
+        ssao_probe[i] = v;
+    }
+    ssao_initalized = true;
+}
+
+static int clamp(int v, int v_min, int v_max) {
+    if (v > v_max) return v_max;
+    if (v < v_min) return v_min;
+    return v;
+}
+
+static uint32_t modulate(uint32_t color, double light) {
+    if (light < 0 || light > 1) {
+        printf("Bad light: %lf\n", light);
+        abort();
+    }
+    int r = (color>> 0) & 0xff;
+    int g = (color>> 8) & 0xff;
+    int b = (color>>16) & 0xff;
+    r *= light;
+    g *= light;
+    b *= light;
+    return r | (g<<8) | (b<<16);
+}
+
+void surface::apply_ssao(double radius, double projection) {
+    ssao_init();
+    for (int y=0; y<(int)height; y++) {
+        for (int x=0; x<(int)width; x++) {
+            int i = x+y*width;
+            int offset = ((x&3)<<4) | ((y&3)<<7);
+            int count = 0;
+            int64_t md = depth[i];
+            for (int j=0; j<16; j++) {
+                glm::dvec4 probe(ssao_probe[offset+j]);
+                int dx = probe.x*radius + 0.5;
+                int dy = probe.y*radius + 0.5;
+                int64_t pd1 = depth[clamp(x + dx, 0, width-1) + clamp(y + dy, 0, height-1)*width];
+                int64_t pd2 = depth[clamp(x - dx, 0, width-1) + clamp(y - dy, 0, height-1)*width];
+                double reld1 = (pd1-md)/(md*projection);
+                double reld2 = (pd2-md)/(md*projection);
+                // Range check
+                if (reld1 < probe.a || reld2 < probe.a) {
+                    count++;
+                } else {
+                    // Occlusion check
+                    if (reld1 > probe.z) count++;
+                    if (reld2 > -probe.z) count++;
+                }
+            }
+            count = clamp(count, 0, 16);
+            data[i] = modulate(data[i], count/16.0);
+        }
+    }
+}
+

@@ -62,6 +62,8 @@ struct surface {
     /** Copy the source onto this surface. 
      * The sizes of the surfaces must match, or source must be 2x or 4x as big as this surface. */
     void copy(surface source);
+    
+    void apply_ssao(double radius, double projection);
 };
 
 #endif

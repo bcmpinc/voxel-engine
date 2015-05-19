@@ -81,7 +81,9 @@ int main(int argc, char ** argv) {
     }
 
     surface surf(get_screen());
-    surface fsaa(surf.scale(4));
+#ifdef SSAA_TEST
+    surface ssaa(surf.scale(4, true));
+#endif
     
     // mainloop
     for (int i=0; i<scenes; i++) {
@@ -99,9 +101,10 @@ int main(int argc, char ** argv) {
         for (int j=-1; j<N; j++) {
             Timer t;
 #ifdef SSAA_TEST
-            fsaa.clear(0xaaccffu);
-            octree_draw(&in, fsaa, get_view_pane(), position, orientation);
-            surf.copy(fsaa);
+            ssaa.clear(0xaaccffu);
+            octree_draw(&in, ssaa, get_view_pane(), position, orientation);
+            ssaa.apply_ssao(100, 0.1);
+            surf.copy(ssaa);
 #else
             clear_screen();
             octree_draw(&in, surf, get_view_pane(), position, orientation);
@@ -117,6 +120,9 @@ int main(int argc, char ** argv) {
             printf("Test %2d:", i);
             for (int j=0; j<N; j++) {
                 printf(" %7.2f", times[j]);
+            }
+            if (N<=2) {
+                printf("\n");
             }
         }
         
