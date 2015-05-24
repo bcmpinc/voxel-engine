@@ -30,6 +30,7 @@
 #include "art.h"
 #include "octree.h"
 #include "capture.h"
+#include "ssao.h"
 
 using namespace std;
 
@@ -75,6 +76,8 @@ int main(int argc, char *argv[]) {
 
     surface surf = get_screen();
     surf.depth = new uint32_t[surf.width * surf.height];
+    
+    ssao filter(20, 0.1, surf.width);
 
     // mainloop
     while (!quit) {
@@ -82,7 +85,9 @@ int main(int argc, char *argv[]) {
         if (moves) {
             surf.clear(0xaaccffu);
             octree_draw(&in, surf, get_view_pane(),position, orientation);
-            // surf.apply_ssao(20,0.1);
+            // Timer tt;
+            filter.apply(surf);
+            // printf("SSAO: %lf\n", tt.elapsed());
             //draw_box(orientation);
 
             c.shoot();

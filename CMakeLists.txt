@@ -47,6 +47,7 @@ add_target(voxel SOURCE
     src/events.cpp
     src/art_sdl.cpp
     src/capture.cpp
+    src/ssao.cpp
     REQUIRED SDL engine
     OPTIONAL LibAV 
 )
