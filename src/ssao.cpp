@@ -22,8 +22,6 @@ ssao::ssao(int radius, double projection, int stride)
         probes[i].dx = v.x*radius + 0.5;
         probes[i].dy = v.y*radius + 0.5;
         probes[i].offset = probes[i].dx + probes[i].dy * stride;
-        probes[i].dx = abs(probes[i].dx);
-        probes[i].dy = abs(probes[i].dy);
     }
     
     for (int i=0; i<SSAO_PROBES_PER_PIXEL; i++) {
@@ -46,37 +44,47 @@ uint32_t ssao::modulate(uint32_t color, int light) {
     return r | (g<<8) | (b<<16);
 }
 
+static int clamp(int val, int low, int high) {
+    if (val <= low) return low;
+    if (val >= high) return high;
+    return val;
+}
+
 void ssao::apply(const surface& target) {
     int width = target.width;
     int height = target.height;
+    int i=0;
     for (int y=0; y<height; y++) {
         for (int x=0; x<width; x++) {
-            int i = x+y*width;
             int probe_offset = (x%SSAO_SIZE + (y%SSAO_SIZE) * SSAO_SIZE) * SSAO_PROBES_PER_PIXEL;
             int count = 0;
             int64_t md = target.depth[i];
             for (int j=0; j<SSAO_PROBES_PER_PIXEL; j++) {
                 const probe &p(probes[probe_offset+j]);
-                if (x>=p.dx && y>=p.dy && x+p.dx<width && y+p.dy<height) {
-                    int64_t pd1 = target.depth[i + p.offset];
-                    int64_t pd2 = target.depth[i - p.offset];
-                    int64_t reld1 = (pd1-md)<<30;
-                    int64_t reld2 = (pd2-md)<<30;
-                    // Range check
-                    if (reld1 < p.range*md || reld2 < p.range*md) {
-                        count++;
-                    } else {
-                        // Occlusion check
-                        if (reld1 >  p.z*md) count++;
-                        if (reld2 > -p.z*md) count++;
-                    }
+                int64_t pd1;
+                int64_t pd2;
+                if (x>=abs(p.dx) && y>=abs(p.dy) && x+abs(p.dx)<width && y+abs(p.dy)<height) {
+                    pd1 = target.depth[i + p.offset];
+                    pd2 = target.depth[i - p.offset];
                 } else {
+                    pd1 = target.depth[clamp(x+p.dx,0,width-1) + clamp(y+p.dy,0,height-1) * stride];
+                    pd2 = target.depth[clamp(x-p.dx,0,width-1) + clamp(y-p.dy,0,height-1) * stride];
+                }
+                int64_t reld1 = (pd1-md)<<30;
+                int64_t reld2 = (pd2-md)<<30;
+                // Range check
+                if (reld1 < p.range*md || reld2 < p.range*md) {
                     count++;
+                } else {
+                    // Occlusion check
+                    if (reld1 >  p.z*md) count++;
+                    if (reld2 > -p.z*md) count++;
                 }
             }
             if (count < SSAO_PROBES_PER_PIXEL) {
                 target.data[i] = modulate(target.data[i], count);
             }
+            i++;
         }
     }
 }

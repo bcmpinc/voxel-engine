@@ -31,6 +31,7 @@
 #include "timing.h"
 #include "art.h"
 #include "octree.h"
+#include "ssao.h"
 
 // #define SSAA_TEST
 
@@ -84,6 +85,7 @@ int main(int argc, char ** argv) {
     surface surf(get_screen());
 #ifdef SSAA_TEST
     surface ssaa(surf.scale(4, true));
+    ssao filter(100, 0.1, ssaa.width);
 #endif
     
     // mainloop
@@ -105,7 +107,9 @@ int main(int argc, char ** argv) {
 #ifdef SSAA_TEST
             ssaa.clear(background);
             octree_draw(&in, ssaa, get_view_pane(), position, orientation);
-            ssaa.apply_ssao(100, 0.1);
+            Timer tt;
+            filter.apply(ssaa);
+            printf("SSAO: %lf\n", tt.elapsed());
             surf.copy(ssaa);
 #else
             surf.clear(background);

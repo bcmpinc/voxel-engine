@@ -55,6 +55,7 @@ add_target(voxel SOURCE
 add_target(benchmark SOURCE
     src/benchmark.cpp
     src/art_sdl.cpp
+    src/ssao.cpp
     REQUIRED SDL engine
 )
 
