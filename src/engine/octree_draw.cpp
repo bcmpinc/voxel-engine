@@ -69,7 +69,12 @@ static inline int movemask_epi32(__m128i v) {
 // Passing mask as a template parameter, as it must be a compile time constant.
 template<int mask>
 static inline __m128i blend_epi32(__m128i a, __m128i b) {
+#ifdef __SSE4_1__    
     return _mm_castps_si128(_mm_blend_ps(_mm_castsi128_ps(a),_mm_castsi128_ps(b),mask));
+#else
+    static const __m128i mask128i = _mm_set_epi32((mask&8)?~0:0, (mask&4)?~0:0, (mask&2)?~0:0, (mask&1)?~0:0);
+    return _mm_or_si128(_mm_andnot_si128(mask128i,a),_mm_and_si128(mask128i,b));
+#endif
 }
 
 /** Computes the sum max(dx,0)+max(dy,0)+max(dz,0). */
