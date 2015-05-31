@@ -66,7 +66,7 @@ static inline int movemask_epi32(__m128i v) {
     return _mm_movemask_ps(_mm_castsi128_ps(v));
 }
 
-// Passing mask as a template parameter, as it must be a compile time constant.
+// Passing mask as a template parameter, as it must be a compile time constant (for SSE4.1).
 template<int mask>
 static inline __m128i blend_epi32(__m128i a, __m128i b) {
 #ifdef __SSE4_1__    
@@ -77,13 +77,33 @@ static inline __m128i blend_epi32(__m128i a, __m128i b) {
 #endif
 }
 
+// Passing mask as a template parameter, as it must be a compile time constant (for SSE4.1).
+template<int index>
+static inline int extract_epi32(__m128i a) {
+#ifdef __SSE4_1__    
+    return _mm_extract_epi32(a, index);
+#else
+    return _mm_cvtsi128_si32(_mm_shuffle_epi32(a, index)); // TODO: fix
+#endif
+}
+
+template<> inline int extract_epi32<0>(__m128i a) {
+    return _mm_cvtsi128_si32(a);
+}
+
 /** Computes the sum max(dx,0)+max(dy,0)+max(dz,0). */
 static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
     const __m128i nil = _mm_setzero_si128();
     __m128i frustum = nil;
+#ifdef __SSE4_1__    
     frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dx, nil));
     frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dy, nil));
     frustum = _mm_sub_epi32(frustum, _mm_max_epi32(dz, nil));
+#else
+    frustum = _mm_sub_epi32(frustum, _mm_and_si128(dx, _mm_cmpgt_epi32(dx, nil)));
+    frustum = _mm_sub_epi32(frustum, _mm_and_si128(dy, _mm_cmpgt_epi32(dy, nil)));
+    frustum = _mm_sub_epi32(frustum, _mm_and_si128(dz, _mm_cmpgt_epi32(dz, nil)));
+#endif
     return frustum;
 }
 
@@ -130,7 +150,11 @@ static bool traverse(
 ){    
     count++;
     // Recursion
-    int delta = _mm_cvtsi128_si32(_mm_hadd_epi32(bound,bound));
+#ifdef __SSE4_1__
+    int delta = extract_epi32<0>(_mm_hadd_epi32(bound,bound));
+#else
+    int delta = extract_epi32<1>(bound) + extract_epi32<0>(bound);
+#endif
     if (depth>=0 && delta < 2<<SCENE_DEPTH) {
         __m128i octant = _mm_cmplt_epi32(pos, _mm_setzero_si128());
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
@@ -186,7 +210,7 @@ static bool traverse(
                         mask &= ~(r<<i); 
                         count_quad++;
                     } else {
-                        glm::dvec3 dpos(_mm_extract_epi32(pos, 0), _mm_extract_epi32(pos, 1), _mm_extract_epi32(pos, 2));
+                        glm::dvec3 dpos(extract_epi32<0>(pos), extract_epi32<1>(pos), extract_epi32<2>(pos));
                         double depth = glm::dot(dpos, look_dir);
                         uint32_t udepth(depth);
                         if (octnode < 0xff000000u) {
@@ -217,14 +241,25 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     double timer_prepare;
     double timer_query;
     
+    // Make sure that the quadtree is big enough that it can contain the rendered surface.
+    // If these checks fail, increase quadtree::dim in quadtree.h.
     assert(quadtree::SIZE >= surf.width);
     assert(quadtree::SIZE >= surf.height);
+    
     double quadtree_bounds[] = {
         view.left,
        (view.left + (view.right -view.left)*(double)quadtree::SIZE/surf.width ),
        (view.top  + (view.bottom-view.top )*(double)quadtree::SIZE/surf.height),
         view.top,
     };
+    // On the other hand, if quadtree::dim is too high, it can cause an overflow in the computation of bounds[].
+    // If these checks fail, decrease quadtree::dim in quadtree.h.
+#ifndef NDEBUG
+    int overflow_limit = 0x3fffffff >> SCENE_DEPTH;
+    for (int i=0; i<4; i++) {
+        assert(-overflow_limit < quadtree_bounds[i] && quadtree_bounds[i] < overflow_limit);
+    }
+#endif
 
     root = file->root;
     face.surf = surf;

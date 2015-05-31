@@ -23,7 +23,10 @@
 
 struct quadtree {
 public:
-    static const uint32_t dim = 13;
+    /** The number of levels in the quadtree.
+     * This should be the lowest number such that width and height are at most (1<<dim). 
+     */
+    static const uint32_t dim = 10;
     static const uint32_t SIZE = 1<<dim;
     static const int N = (1<<dim<<dim)/3-1;
     static const int M = N/4-1;

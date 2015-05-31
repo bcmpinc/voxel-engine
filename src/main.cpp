@@ -32,6 +32,8 @@
 #include "capture.h"
 #include "ssao.h"
 
+// #define APPLY_SSAO
+
 using namespace std;
 
 
@@ -76,8 +78,10 @@ int main(int argc, char *argv[]) {
 
     surface surf = get_screen();
     surf.depth = new uint32_t[surf.width * surf.height];
-    
+
+#ifdef APPLY_SSAO    
     ssao filter(20, 0.1, surf.width);
+#endif
 
     // mainloop
     while (!quit) {
@@ -86,7 +90,9 @@ int main(int argc, char *argv[]) {
             surf.clear(0xaaccffu);
             octree_draw(&in, surf, get_view_pane(),position, orientation);
             // Timer tt;
+#ifdef APPLY_SSAO
             filter.apply(surf);
+#endif
             // printf("SSAO: %lf\n", tt.elapsed());
             //draw_box(orientation);
 
