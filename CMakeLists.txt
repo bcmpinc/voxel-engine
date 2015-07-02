@@ -12,12 +12,13 @@ set(CMAKE_NM "gcc-nm")
 set(CMAKE_RANLIB "gcc-ranlib")
 
 find_package(GLM REQUIRED)
-find_package(SDL)
+find_package(SDL2)
+find_package(SDL2_image)
 find_package(PNG)
 if (ENABLE_CAPTURE)
     find_package(LibAV COMPONENTS avcodec avformat avutil swscale) # Actually we are using ffmpeg here.
 endif()
-find_package(SDL_image)
+
 # find_package(Lua51)
 # find_package(Qt4)
 # find_package(KDE4)
@@ -49,7 +50,7 @@ add_target(voxel SOURCE
     src/art_sdl.cpp
     src/capture.cpp
     src/ssao.cpp
-    REQUIRED SDL engine
+    REQUIRED SDL2 engine
     OPTIONAL LibAV 
 )
 
@@ -57,13 +58,13 @@ add_target(benchmark SOURCE
     src/benchmark.cpp
     src/art_sdl.cpp
     src/ssao.cpp
-    REQUIRED SDL engine
+    REQUIRED SDL2 engine
 )
 
 add_target(convert   SOURCE src/convert.cpp   REQUIRED engine)
 add_target(convert2  SOURCE src/convert2.cpp  REQUIRED engine)
 add_target(ascii2bin SOURCE src/ascii2bin.cpp REQUIRED engine)
-add_target(heightmap SOURCE src/heightmap.cpp REQUIRED engine SDL SDL_image)
+# add_target(heightmap SOURCE src/heightmap.cpp REQUIRED engine SDL2 SDL2_image) # Not yet ported to SDL2.
 add_target(build_db  SOURCE src/build_db.cpp  REQUIRED engine)
 
 add_target(holes     SOURCE src/holes.cpp)

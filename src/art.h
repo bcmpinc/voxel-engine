@@ -34,7 +34,6 @@ static const int SCREEN_HEIGHT =  768;
 #endif
 
 void init_screen(const char * caption);
-void clear_screen();
 void flip_screen();
 
 surface get_screen();

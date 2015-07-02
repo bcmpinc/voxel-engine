@@ -1,6 +1,6 @@
 /*
     Voxel-Engine - A CPU based sparse octree renderer.
-    Copyright (C) 2013  B.J. Conijn <bcmpinc@users.sourceforge.net>
+    Copyright (C) 2013,2015  B.J. Conijn <bcmpinc@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #define GLM_FORCE_RADIANS
 #include <glm/gtc/matrix_transform.hpp>
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 #include "events.h"
 
@@ -97,9 +97,8 @@ void handle_events() {
             break;
         }
         case SDL_MOUSEBUTTONDOWN: {
-            SDL_ShowCursor(mousemove);
             mousemove=!mousemove;
-            SDL_WM_GrabInput(mousemove?SDL_GRAB_ON:SDL_GRAB_OFF);
+            SDL_SetRelativeMouseMode(mousemove?SDL_TRUE:SDL_FALSE);
             break;
         }
         case SDL_MOUSEMOTION: {

@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <unistd.h>
 #include "pointset.h"
 #include "errno.h"

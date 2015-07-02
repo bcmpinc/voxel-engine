@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 #include "art.h"
 
@@ -24,47 +24,54 @@ using glm::min;
 using glm::max;
 
 // The screen surface
-static SDL_Surface *screen = NULL;
+static SDL_Window *screen = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *texture = NULL;
 
-// pointer to the pixels (32 bit)
-static uint32_t * pixs;
+surface surf;
+
+static void sdl_die(const char * message) {
+    fprintf (stderr, "%s: %s\n", message, SDL_GetError ());
+    exit(2);
+}
 
 void init_screen(const char * caption) {
     // Initialize SDL 
-    if (SDL_Init (SDL_INIT_VIDEO) < 0) {
-        fprintf (stderr, "Couldn't initialize SDL: %s\n", SDL_GetError ());
-        exit (2);
-    }
+    if (SDL_Init (SDL_INIT_VIDEO) < 0) sdl_die("Couldn't initialize SDL");
     atexit (SDL_Quit);
 #if defined _WIN32 || defined _WIN64
     freopen( "CON", "w", stdout );
     freopen( "CON", "w", stderr );
 #endif
 
-    // Set 32-bits video mode (eventually emulated)
-    screen = SDL_SetVideoMode (SCREEN_WIDTH, SCREEN_HEIGHT, 32, SDL_SWSURFACE | SDL_DOUBLEBUF | (SCREEN_FULLSCREEN*SDL_FULLSCREEN));
-    if (screen == NULL) {
-        fprintf (stderr, "Couldn't set video mode: %s\n", SDL_GetError ());
-        exit (3);
+    // Set 32-bits video mode
+    if (SCREEN_FULLSCREEN) {
+        screen = SDL_CreateWindow(caption, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
+        SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+    } else {
+        screen = SDL_CreateWindow(caption, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     }
-    SDL_WM_SetCaption (caption, NULL);
+    if (screen == NULL) sdl_die("Couldn't set video mode");
+    
+    renderer = SDL_CreateRenderer(screen, -1, 0);
+    if (renderer == NULL) sdl_die("Couldn't create renderer");
+    if (SCREEN_FULLSCREEN) {
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
+        SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+    }
+
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    if (texture == NULL) sdl_die("Couldn't create texture");
 
     // set the pixel pointer
-    pixs=(uint32_t*)screen->pixels;  
-}
-
-void clear_screen() {
-    SDL_FillRect(screen,NULL,0xaaccff);
+    surf = surface(SCREEN_WIDTH, SCREEN_HEIGHT, true);
 }
 
 void flip_screen() {
-    SDL_Flip (screen);
-}
-
-static void pixel(uint32_t x, uint32_t y, uint32_t c) {
-    assert(x<SCREEN_WIDTH && y<SCREEN_HEIGHT);
-    int64_t i = x+y*(SCREEN_WIDTH);
-    pixs[i] = c;
+    SDL_UpdateTexture(texture, NULL, surf.data, SCREEN_WIDTH * sizeof (uint32_t));
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
 
 /** Draws a line. */
@@ -111,7 +118,7 @@ static void line(double x1, double y1, double x2, double y2, int c) {
     for (int i=0; i<=d; i++) {
         double x=(x1+(x2-x1)*i/d);
         double y=(y1+(y2-y1)*i/d);
-        if (x<SCREEN_WIDTH && y<SCREEN_HEIGHT) pixel(x,y,c);
+        if (x<SCREEN_WIDTH && y<SCREEN_HEIGHT) surf.pixel(x,y,c);
     }
 }
 
@@ -176,7 +183,7 @@ void draw_box(glm::dmat3 orientation) {
 }
 
 surface get_screen() {
-    return surface(SCREEN_WIDTH, SCREEN_HEIGHT, pixs);
+    return surf;
 }
 
 namespace frustum {
