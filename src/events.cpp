@@ -26,9 +26,11 @@
 class button {
     public:
     enum {
-        W, A, S, D, Z, X, 
-        SPACE, C, SHIFT,
-        
+        FORWARD, BACKWARD,
+        LEFT, RIGHT,
+        UP, DOWN,
+        ROLL_LEFT, ROLL_RIGHT,
+        FAST,        
         STATES
     };
 };
@@ -60,36 +62,36 @@ void handle_events() {
         case SDL_KEYUP:
         case SDL_KEYDOWN: {
             bool state = (event.type == SDL_KEYDOWN);
-            switch (event.key.keysym.sym) {
-                case SDLK_ESCAPE:
+            switch (event.key.keysym.scancode) {
+                case SDL_SCANCODE_ESCAPE:
                     quit = true;
                     break;
-                case SDLK_w:
-                    button_state[button::W] = state;
+                case SDL_SCANCODE_W:
+                    button_state[button::FORWARD] = state;
                     break;
-                case SDLK_a:
-                    button_state[button::A] = state;
+                case SDL_SCANCODE_A:
+                    button_state[button::BACKWARD] = state;
                     break;
-                case SDLK_s:
-                    button_state[button::S] = state;
+                case SDL_SCANCODE_S:
+                    button_state[button::LEFT] = state;
                     break;
-                case SDLK_d:
-                    button_state[button::D] = state;
+                case SDL_SCANCODE_D:
+                    button_state[button::RIGHT] = state;
                     break;
-                case SDLK_c:
-                    button_state[button::C] = state;
+                case SDL_SCANCODE_SPACE:
+                    button_state[button::UP] = state;
                     break;
-                case SDLK_z:
-                    button_state[button::Z] = state;
+                case SDL_SCANCODE_LCTRL:
+                    button_state[button::DOWN] = state;
                     break;
-                case SDLK_x:
-                    button_state[button::X] = state;
+                case SDL_SCANCODE_Q:
+                    button_state[button::ROLL_LEFT] = state;
                     break;
-                case SDLK_SPACE:
-                    button_state[button::SPACE] = state;
+                case SDL_SCANCODE_E:
+                    button_state[button::ROLL_RIGHT] = state;
                     break;
-                case SDLK_LSHIFT:
-                    button_state[button::SHIFT] = state;
+                case SDL_SCANCODE_LSHIFT:
+                    button_state[button::FAST] = state;
                     break;
                 default:
                     break;
@@ -128,15 +130,15 @@ void handle_events() {
     }
 
     double dist = movespeed;
-    if (button_state[button::SHIFT]) {
+    if (button_state[button::FAST]) {
         dist *= 16;
     }
     
     glm::dmat3 M = glm::transpose(orientation);
     
     int rd = 0;
-    if (button_state[button::Z]) rd++;
-    if (button_state[button::X]) rd--;
+    if (button_state[button::ROLL_LEFT]) rd++;
+    if (button_state[button::ROLL_RIGHT]) rd--;
     if (rd) {
         glm::dmat4 tview = glm::transpose(view);
         view = glm::rotate(
@@ -147,28 +149,28 @@ void handle_events() {
         orientation = glm::dmat3(view);                
         moves=true;
     }
-    if (button_state[button::W]) {
+    if (button_state[button::FORWARD]) {
         position += dist * M[2];
         moves=true;
     }
-    if (button_state[button::S]) {
+    if (button_state[button::BACKWARD]) {
         position -= dist * M[2];
         moves=true;
     }
-    if (button_state[button::A]) {
+    if (button_state[button::LEFT]) {
         position -= dist * M[0];
         moves=true;
     }
-    if (button_state[button::D]) {
+    if (button_state[button::RIGHT]) {
         position += dist * M[0];
         moves=true;
     }
-    if (button_state[button::C]) {
-        position -= dist * M[1];
+    if (button_state[button::UP]) {
+        position += dist * M[1];
         moves=true;
     }
-    if (button_state[button::SPACE]) {
-        position += dist * M[1];
+    if (button_state[button::DOWN]) {
+        position -= dist * M[1];
         moves=true;
     }
 } 
