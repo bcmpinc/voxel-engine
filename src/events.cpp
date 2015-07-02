@@ -37,25 +37,54 @@ class button {
 
 static glm::dmat4 view;
     
-// Quiting?
 static bool button_state[button::STATES];
 static bool mousemove=false;
+static int jdx=0, jdy=0, jvx=0, jvy=0;
 
 // Position
 static const double rotatespeed = -0.005, rollspeed = 0.05, movespeed = 1<<17;
 static const int MILLISECONDS_PER_FRAME = 33;
+static const int DEADZONE = 1500;
 
 bool quit  = false;
 bool moves = true;
 glm::dmat3 orientation;
 glm::dvec3 position;
 
+static void attach_joysticks() {
+    static int joy_error = SDL_InitSubSystem(SDL_INIT_JOYSTICK);
+    if (joy_error) return;
+    // Check for joystick
+    int n = SDL_NumJoysticks();
+    printf("Attaching %d joysticks\n", n);
+    for (int i=0; i<n; i++) {
+        // Open joystick
+        SDL_Joystick * joy = SDL_JoystickOpen(0);
+
+        if (joy) {
+            printf("Opened Joystick %d\n", i);
+            printf("Name: %s\n", SDL_JoystickName(joy));
+            printf("Number of Axes: %d\n", SDL_JoystickNumAxes(joy));
+            printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
+            printf("Number of Balls: %d\n", SDL_JoystickNumBalls(joy));
+        } else {
+            printf("Couldn't open Joystick %d\n", i);
+        }
+    }
+}
+
 // checks user input
 void handle_events() {
+    static bool first_call = true;
+    if (first_call) {
+        attach_joysticks();
+        first_call = false;
+    }
+    
     moves=false;
 
     SDL_Event event;
-  
+    
     /* Check for events */
     while (SDL_PollEvent (&event)) {
         switch (event.type) {
@@ -94,6 +123,9 @@ void handle_events() {
                     button_state[button::FAST] = state;
                     break;
                 default:
+                    if (state && event.key.keysym.sym == SDLK_j) {
+                        attach_joysticks();
+                    }
                     break;
             }
             break;
@@ -121,6 +153,40 @@ void handle_events() {
             }
             break;
         }
+        case SDL_JOYAXISMOTION: {
+            switch (event.jaxis.axis) {
+                case 0: jdx = event.jaxis.value; break;
+                case 1: jdy = event.jaxis.value; break;
+                case 2: jvx = event.jaxis.value; break;
+                case 3: jvy = event.jaxis.value; break;
+                default: break;
+            }
+            break;
+        }
+        case SDL_JOYBUTTONUP: 
+        case SDL_JOYBUTTONDOWN: {
+            bool state = (event.type == SDL_JOYBUTTONDOWN);
+            switch (event.jbutton.button) {
+                case 1: 
+                    button_state[button::FAST] = state;
+                    break;
+                case 2: 
+                    button_state[button::UP] = state;
+                    break;
+                case 3: 
+                    button_state[button::DOWN] = state;
+                    break;
+                case 4:
+                    button_state[button::ROLL_LEFT] = state;
+                    break;
+                case 5:
+                    button_state[button::ROLL_RIGHT] = state;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        }
         case SDL_QUIT:
             quit = true;
             break;
@@ -129,6 +195,22 @@ void handle_events() {
         }
     }
 
+    if (jvx < -DEADZONE || DEADZONE < jvx || jvy < -DEADZONE || DEADZONE < jvy) {
+        glm::dmat4 tview = glm::transpose(view);
+        view = glm::rotate(
+            view, 
+            rotatespeed * jvx / 500.0,
+            glm::dvec3(tview[1])
+        );
+        view = glm::rotate(
+            view, 
+            rotatespeed * jvy / -500.0,
+            glm::dvec3(tview[0])
+        );
+        orientation = glm::dmat3(view);                
+        moves=true;
+    }
+    
     double dist = movespeed;
     if (button_state[button::FAST]) {
         dist *= 16;
@@ -155,6 +237,12 @@ void handle_events() {
     }
     if (button_state[button::BACKWARD]) {
         position -= dist * M[2];
+        moves=true;
+    }
+    if (jdx < -DEADZONE || DEADZONE < jdx || jdy < -DEADZONE || DEADZONE < jdy) {
+        double h = dist * hypot(jdx, jdy) / 100000000.;
+        position += jdx * h * M[0];
+        position -= jdy * h * M[2];
         moves=true;
     }
     if (button_state[button::LEFT]) {
