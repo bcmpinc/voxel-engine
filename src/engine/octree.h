@@ -22,6 +22,10 @@
 #include <glm/glm.hpp>
 #include "surface.h"
 
+static inline int popcount(int v) {
+    return __builtin_popcount(v);
+}
+
 /** A node in an octree. 
  *
  * Indices are a bitwise or of the following values:
@@ -42,9 +46,9 @@ struct octree {
     /** Returns the color of a given position in the child array (assuming it is not a pointer). */
     uint32_t color(int pos) const { return child[pos] & 0x00ffffffu; }
     /** Converts an index (0-7) into a position in the child array, assuming it is in the child array. */
-    uint32_t position(int index) const { return __builtin_popcount(bitmask & ((1<<index) - 1)); }
+    uint32_t position(int index) const { return popcount(bitmask & ((1<<index) - 1)); }
     /** Returns the length of the child array. */
-    uint32_t size() const { return __builtin_popcount(bitmask); }
+    uint32_t size() const { return popcount(bitmask); }
     /** Checks whether a certain index is in the child array. */
     bool has_index(int index) const { return bitmask & (1<<index); }
     /** Makes room for the given index in the child array, and returns its position. */
