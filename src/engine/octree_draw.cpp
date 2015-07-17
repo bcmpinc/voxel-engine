@@ -83,7 +83,7 @@ static inline int extract_epi32(__m128i a) {
 #ifdef __SSE4_1__    
     return _mm_extract_epi32(a, index);
 #else
-    return _mm_cvtsi128_si32(_mm_shuffle_epi32(a, index)); // TODO: fix
+    return _mm_cvtsi128_si32(_mm_srli_si128(a, 4*index)); // TODO: fix
 #endif
 }
 
@@ -150,11 +150,7 @@ static bool traverse(
 ){    
     count++;
     // Recursion
-#ifdef __SSE4_1__
-    int delta = extract_epi32<0>(_mm_hadd_epi32(bound,bound));
-#else
-    int delta = extract_epi32<1>(bound) + extract_epi32<0>(bound);
-#endif
+    int delta = extract_epi32<0>(_mm_add_epi32(bound,_mm_srli_si128(bound,4)));
     if (depth>=0 && delta < 2<<SCENE_DEPTH) {
         __m128i octant = _mm_cmplt_epi32(pos, _mm_setzero_si128());
         int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
@@ -206,20 +202,17 @@ static bool traverse(
                 __m128i new_frustum = compute_frustum(new_dx, new_dy, new_dz);
                 if (!movemask_epi32(_mm_cmplt_epi32(new_bound, new_frustum))) { // frustum occlusion
                     if (quadnode<quadtree::M) {
-                        bool r = traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth);
-                        mask &= ~(r<<i); 
+                        if (traverse(quadnode*4+i, octnode, new_bound, new_dx, new_dy, new_dz, new_frustum, pos, depth)) {
+                            mask &= ~(1<<i); 
+                        }
                         count_quad++;
                     } else {
                         glm::dvec3 dpos(extract_epi32<0>(pos), extract_epi32<1>(pos), extract_epi32<2>(pos));
                         double depth = glm::dot(dpos, look_dir);
                         uint32_t udepth(depth);
-                        if (octnode < 0xff000000u) {
-                            face.draw(quadnode*4+i, root[octnode].avgcolor, udepth); // Rendering
-                            mask &= ~(1<<i);
-                        } else {
-                            face.draw(quadnode*4+i, octnode, udepth); // Rendering
-                            mask &= ~(1<<i);
-                        }
+                        uint32_t color = (octnode < 0xff000000u) ? root[octnode].avgcolor : octnode;
+                        face.draw(quadnode*4+i, color, udepth); // Rendering
+                        mask &= ~(1<<i);
                     }
                 }
             }
