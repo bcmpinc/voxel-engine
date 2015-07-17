@@ -98,10 +98,10 @@ void handle_events() {
                 case SDL_SCANCODE_W:
                     button_state[button::FORWARD] = state;
                     break;
-                case SDL_SCANCODE_A:
+                case SDL_SCANCODE_S:
                     button_state[button::BACKWARD] = state;
                     break;
-                case SDL_SCANCODE_S:
+                case SDL_SCANCODE_A:
                     button_state[button::LEFT] = state;
                     break;
                 case SDL_SCANCODE_D:
