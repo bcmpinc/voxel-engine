@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
+#include <string.h>
 #include <xmmintrin.h>
 
 #include "quadtree.h"
@@ -96,10 +97,10 @@ struct SearchNode {
     int32_t quadnode;
     /** The index of the current octree node that is being rendered. For leaf nodes (and their 'childs') octnode will be a color and >= 0xff000000u. */
     uint32_t octnode;
-    /** Number of remaining octree recursions.
-     * Limits the number of nested traverse calls, to prevent stack overflows. */
+    /** Distance to the viewer. */
     int32_t depth;
-    int32_t z;
+    int32_t depth2;
+    int32_t dd[8];
     /** The quadnode projected on the parallel plane containing the furthest corner of the current octree node. 
      * It stores the distance from this furthest corner to the (left, right, top, bottom) edge of the projected quadnode. */
     __m128i bound;
@@ -178,6 +179,7 @@ static int prepare(int size){
             // Traverse octree
             SearchNode new_node(node);
             new_node.depth--;
+            for (int i=0; i<8; i++) new_node.dd[i]/=2;
             __m128i octant = _mm_cmplt_epi32(node.pos, _mm_setzero_si128());
             int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
             FOR_k_IS_0_TO_7({
@@ -185,6 +187,7 @@ static int prepare(int size){
                 if (root[node.octnode].has_index(i)) {
                     int j = root[node.octnode].position(i);
                     new_node.bound = _mm_slli_epi32(node.bound, 1);
+                    new_node.depth2 = node.depth2 + new_node.dd[i];
                     if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
                     if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
                     if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
@@ -219,6 +222,7 @@ static bool traverse_oct(const SearchNode& __restrict node){
     int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
     SearchNode new_node(node);
     new_node.depth--;
+    for (int i=0; i<8; i++) new_node.dd[i]/=2;
     if (node.octnode < 0xff000000) {
         // Traverse octree
         FOR_k_IS_0_TO_7({
@@ -226,6 +230,7 @@ static bool traverse_oct(const SearchNode& __restrict node){
             if (root[node.octnode].has_index(i)) {
                 int j = root[node.octnode].position(i);
                 new_node.bound = _mm_slli_epi32(node.bound, 1);
+                new_node.depth2 = node.depth2 + new_node.dd[i];
                 if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
                 if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
                 if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
@@ -242,6 +247,7 @@ static bool traverse_oct(const SearchNode& __restrict node){
         FOR_k_IS_0_TO_6({
             int i = furthest^k;
             new_node.bound = _mm_slli_epi32(node.bound, 1);
+            new_node.depth2 = node.depth2 + new_node.dd[i];
             if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
             if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
             if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
@@ -282,8 +288,12 @@ static bool traverse_quad(const SearchNode& __restrict node) {
                 } else {
                     glm::dvec3 dpos(extract_epi32<0>(node.pos), extract_epi32<1>(node.pos), extract_epi32<2>(node.pos));
                     double depth = glm::dot(dpos, look_dir);
-                    uint32_t udepth(depth);
+                    int32_t udepth(depth);
                     uint32_t color = (node.octnode < 0xff000000u) ? root[node.octnode].avgcolor : node.octnode;
+                    // Depth color.
+                    int32_t depth2 = node.depth2;
+                    if (udepth - depth2 < -32) color = 0xffff00ff;
+                    if (udepth - depth2 >  32) color = 0xffffff00;
                     face.draw(new_node.quadnode, color, udepth); // Rendering
                     mask &= ~(1<<i);
                 }
@@ -339,12 +349,15 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     count_oct = count_quad = count = 0;
     // Do the actual rendering of the scene (i.e. execute the query).
     __m128i bounds[8];
+    int ddepth[8];
     int max_z=-1<<31;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
         __m128i vert = _mm_slli_epi32(DELTA[i], SCENE_DEPTH);
         int * vertex = (int*)&vert;
-        glm::dvec3 coord = orientation * (glm::dvec3(vertex[0], vertex[1], vertex[2]) - position);
+        glm::dvec3 coord = orientation * glm::dvec3(vertex[0], vertex[1], vertex[2]);
+        ddepth[i] = coord.z;
+        coord -= orientation * position;
         bounds[i] = _mm_set_epi32(
             (int)(coord.z*quadtree_bounds[3] - coord.y),
            -(int)(coord.z*quadtree_bounds[2] - coord.y),
@@ -360,6 +373,8 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     SearchNode node;
     node.quadnode = -1;
     node.octnode = 0;
+    node.depth2 = -glm::dot(position, look_dir); // Depth2 computation has some rounding errors.
+    memcpy(node.dd, ddepth, sizeof(ddepth));
     node.depth = SCENE_DEPTH-1;
     node.pos = _mm_set_epi32(0, -(int)position.z, -(int)position.y, -(int)position.x);
     node.bound = bounds[C];
