@@ -83,7 +83,7 @@ static inline int extract_epi32(__m128i a) {
 #ifdef __SSE4_1__    
     return _mm_extract_epi32(a, index);
 #else
-    return _mm_cvtsi128_si32(_mm_srli_si128(a, 4*index)); // TODO: fix
+    return _mm_cvtsi128_si32(_mm_srli_si128(a, 4*index));
 #endif
 }
 
@@ -133,14 +133,14 @@ void SearchNode::compute_frustum() {
 
 /** Compute an estimate of the node size on screen. */
 int SearchNode::delta() const{
-  return extract_epi32<0>(_mm_add_epi32(bound,_mm_srli_si128(bound,4)));
+    __m128i b = _mm_add_epi32(_mm_add_epi32(bound, dx), _mm_add_epi32(dy, dz));
+    return extract_epi32<0>(_mm_add_epi32(b,_mm_srli_si128(b,4)));
 }
 
 /** Compute whether this node is still within the frustum. */
 bool SearchNode::inside_frustum() const{
     return !movemask_epi32(_mm_cmplt_epi32(bound, frustum));
 }
-
 
 #define FOR_i_IS_4_TO_7(code) \
   {constexpr int i = 4; code} \
@@ -166,22 +166,22 @@ bool SearchNode::inside_frustum() const{
   {const int k = 4; code} \
   {const int k = 5; code} \
   {const int k = 6; code}
-
-/** Core of the voxel rendering algorithm. 
- * @return true if quadtree node is rendered.
- */
-static bool traverse(const SearchNode& __restrict node){    
-    count++;
-    // Recursion
-    if (node.depth>=0 && node.delta() < 2<<SCENE_DEPTH) {
-        __m128i octant = _mm_cmplt_epi32(node.pos, _mm_setzero_si128());
-        int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
-        SearchNode new_node(node);
-        new_node.depth--;
-        if (node.octnode < 0xff000000) {
+  
+static SearchNode root_array[4096];
+static int prepare(int size){
+    int fixed = 0;
+    while (size > fixed && size<=4096-8) {
+        const SearchNode& __restrict node = root_array[fixed];
+        if (node.delta() >= 2<<SCENE_DEPTH) {
+            fixed++;
+        } else if (node.octnode < 0xff000000) {
             // Traverse octree
+            SearchNode new_node(node);
+            new_node.depth--;
+            __m128i octant = _mm_cmplt_epi32(node.pos, _mm_setzero_si128());
+            int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
             FOR_k_IS_0_TO_7({
-                int i = furthest^k;
+                int i = furthest^(7-k);
                 if (root[node.octnode].has_index(i)) {
                     int j = root[node.octnode].position(i);
                     new_node.bound = _mm_slli_epi32(node.bound, 1);
@@ -192,63 +192,106 @@ static bool traverse(const SearchNode& __restrict node){
                         count_oct++;
                         new_node.octnode = root[node.octnode].child[j];
                         new_node.pos = _mm_add_epi32(node.pos, _mm_slli_epi32(DELTA[i], node.depth));
-                        if (traverse(new_node)) return true;
+                        root_array[size] = new_node;
+                        size++;
                     }
                 }
             });
+            root_array[fixed++].quadnode = 0;
         } else {
-            // Duplicate leaf node
-            FOR_k_IS_0_TO_6({
-                int i = furthest^k;
+            // Don't traverse leaf nodes here.
+            fixed++;
+        }
+    }
+    return size;
+}
+
+/** Core of the voxel rendering algorithm. 
+ * @return true if quadtree node is rendered.
+ */
+static bool traverse_quad(const SearchNode& __restrict node);
+
+static bool traverse_oct(const SearchNode& __restrict node){
+    if (node.delta() >= 2<<SCENE_DEPTH) { return traverse_quad(node); }
+    count++;
+    // Recursion
+    __m128i octant = _mm_cmplt_epi32(node.pos, _mm_setzero_si128());
+    int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
+    SearchNode new_node(node);
+    new_node.depth--;
+    if (node.octnode < 0xff000000) {
+        // Traverse octree
+        FOR_k_IS_0_TO_7({
+            int i = furthest^k;
+            if (root[node.octnode].has_index(i)) {
+                int j = root[node.octnode].position(i);
                 new_node.bound = _mm_slli_epi32(node.bound, 1);
                 if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
                 if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
                 if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
                 if (new_node.inside_frustum()) {
                     count_oct++;
+                    new_node.octnode = root[node.octnode].child[j];
                     new_node.pos = _mm_add_epi32(node.pos, _mm_slli_epi32(DELTA[i], node.depth));
-                    if (traverse(new_node)) return true;
-                }
-            });
-        }
-        return false;
-    } else {
-        // Traverse quadtree 
-        int mask = face.children[node.quadnode];
-        __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(node.bound, _mm_shuffle_epi32(node.bound,0xb1)), 1);
-        __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(node.dx, _mm_shuffle_epi32(node.dx,0xb1)), 1);
-        __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(node.dy, _mm_shuffle_epi32(node.dy,0xb1)), 1);
-        __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(node.dz, _mm_shuffle_epi32(node.dz,0xb1)), 1);
-        SearchNode new_node(node);
-        FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
-            if (mask&(1<<i)) {
-                constexpr int new_mask = quad_mask[i];
-                new_node.bound = blend_epi32<new_mask>(mid_bound, node.bound);
-                new_node.dx = blend_epi32<new_mask>(mid_dx, node.dx);
-                new_node.dy = blend_epi32<new_mask>(mid_dy, node.dy);
-                new_node.dz = blend_epi32<new_mask>(mid_dz, node.dz);
-                new_node.compute_frustum();
-                if (new_node.inside_frustum()) { // frustum occlusion
-                    if (node.quadnode<quadtree::M) {
-                        new_node.quadnode = node.quadnode*4+i;
-                        if (traverse(new_node)) {
-                            mask &= ~(1<<i); 
-                        }
-                        count_quad++;
-                    } else {
-                        glm::dvec3 dpos(extract_epi32<0>(node.pos), extract_epi32<1>(node.pos), extract_epi32<2>(node.pos));
-                        double depth = glm::dot(dpos, look_dir);
-                        uint32_t udepth(depth);
-                        uint32_t color = (node.octnode < 0xff000000u) ? root[node.octnode].avgcolor : node.octnode;
-                        face.draw(node.quadnode*4+i, color, udepth); // Rendering
-                        mask &= ~(1<<i);
-                    }
+                    if (traverse_quad(new_node)) return true;
                 }
             }
         });
-        face.children[node.quadnode] = mask;
-        return mask == 0;
+    } else {
+        // Duplicate leaf node
+        FOR_k_IS_0_TO_6({
+            int i = furthest^k;
+            new_node.bound = _mm_slli_epi32(node.bound, 1);
+            if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
+            if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
+            if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
+            if (new_node.inside_frustum()) {
+                count_oct++;
+                new_node.pos = _mm_add_epi32(node.pos, _mm_slli_epi32(DELTA[i], node.depth));
+                if (traverse_quad(new_node)) return true;
+            }
+        });
     }
+    return false;
+}
+
+static bool traverse_quad(const SearchNode& __restrict node) {    
+    count++;
+    // Traverse quadtree 
+    int mask = face.children[node.quadnode];
+    __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(node.bound, _mm_shuffle_epi32(node.bound,0xb1)), 1);
+    __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(node.dx, _mm_shuffle_epi32(node.dx,0xb1)), 1);
+    __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(node.dy, _mm_shuffle_epi32(node.dy,0xb1)), 1);
+    __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(node.dz, _mm_shuffle_epi32(node.dz,0xb1)), 1);
+    SearchNode new_node(node);
+    FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
+        if (mask&(1<<i)) {
+            constexpr int new_mask = quad_mask[i];
+            new_node.quadnode = node.quadnode*4+i;
+            new_node.bound = blend_epi32<new_mask>(mid_bound, node.bound);
+            new_node.dx = blend_epi32<new_mask>(mid_dx, node.dx);
+            new_node.dy = blend_epi32<new_mask>(mid_dy, node.dy);
+            new_node.dz = blend_epi32<new_mask>(mid_dz, node.dz);
+            new_node.compute_frustum();
+            if (new_node.inside_frustum()) { // frustum occlusion
+                if (node.quadnode<quadtree::M) {
+                    if (traverse_oct(new_node)) {
+                        mask &= ~(1<<i); 
+                    }
+                    count_quad++;
+                } else {
+                    glm::dvec3 dpos(extract_epi32<0>(node.pos), extract_epi32<1>(node.pos), extract_epi32<2>(node.pos));
+                    double depth = glm::dot(dpos, look_dir);
+                    uint32_t udepth(depth);
+                    uint32_t color = (node.octnode < 0xff000000u) ? root[node.octnode].avgcolor : node.octnode;
+                    face.draw(new_node.quadnode, color, udepth); // Rendering
+                    mask &= ~(1<<i);
+                }
+            }
+        }
+    });
+    face.children[node.quadnode] = mask;
+    return mask == 0;
 }
 
 /** Render the octree to the provided surface for the given viewpane, position and orientation.
@@ -324,11 +367,16 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     node.dy = _mm_sub_epi32(bounds[C^DY], bounds[C]);
     node.dz = _mm_sub_epi32(bounds[C^DZ], bounds[C]);
     node.compute_frustum();
-    traverse(node);
+    root_array[0] = node;
+    int size = prepare(1);
+    for (int i=size-1; i>=0; i--) {
+        if (root_array[i].quadnode)
+            traverse_quad(root_array[i]);
+    }
     
     timer_query = t_query.elapsed();
 
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f | Count:%10d Oct:%10d Quad:%10d\n", t_global.elapsed(), timer_prepare, timer_query, count, count_oct, count_quad);
+    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f | Count:%10d Oct:%10d Quad:%10d | %4d\n", t_global.elapsed(), timer_prepare, timer_query, count, count_oct, count_quad, size);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 
