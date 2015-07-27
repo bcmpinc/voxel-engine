@@ -35,7 +35,6 @@ static quadtree face;
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
-static glm::dvec3 look_dir;
 static int32_t ddepth[8];
 
 constexpr static int make_mask(int a, int b, int c, int d) {
@@ -108,9 +107,6 @@ struct SearchNode {
     __m128i dx, dy, dz;
     /** Computed by `compute_frustum()`, a magic variable used for frustum occlusion. */
     __m128i frustum;
-    /** The location of the center of the octree node, relative to the viewer in octree space. */
-    __m128i pos;
-    //__m128i padding0;
     
     inline void compute_frustum();
     inline int delta() const;
@@ -183,21 +179,17 @@ static int prepare(int size){
             // Traverse octree
             SearchNode new_node(node);
             new_node.depth++;
-            __m128i octant = _mm_cmplt_epi32(node.pos, _mm_setzero_si128());
-            int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
             FOR_k_IS_0_TO_7({
-                int i = furthest^(7-k);
-                if (root[node.octnode].has_index(i)) {
-                    int j = root[node.octnode].position(i);
+                if (root[node.octnode].has_index(k)) {
+                    int j = root[node.octnode].position(k);
                     new_node.bound = _mm_slli_epi32(node.bound, 1);
-                    new_node.depth2 = node.depth2 + ((ddepth[i] + (1<<node.depth)) >> new_node.depth);
-                    if ((C^i)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
-                    if ((C^i)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
-                    if ((C^i)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
+                    new_node.depth2 = node.depth2 + ((ddepth[k] + (1<<node.depth)) >> new_node.depth);
+                    if ((C^k)&DX) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dx);
+                    if ((C^k)&DY) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dy);
+                    if ((C^k)&DZ) new_node.bound = _mm_add_epi32(new_node.bound,new_node.dz);
                     if (new_node.inside_frustum()) {
                         count_oct++;
                         new_node.octnode = root[node.octnode].child[j];
-                        new_node.pos = _mm_add_epi32(node.pos, _mm_slli_epi32(DELTA[i], SCENE_DEPTH-new_node.depth));
                         nodes[size] = new_node;
                         size++;
                     }
@@ -228,43 +220,37 @@ static void traverse_oct(int max_n, SearchNode* begin, SearchNode* end){
             continue;
         }
         // Recursion
-        __m128i octant = _mm_cmplt_epi32(node->pos, _mm_setzero_si128());
-        int furthest = movemask_epi32(_mm_shuffle_epi32(octant, 0xc6));
         if (node->octnode < 0xff000000) {
             // Traverse octree
             FOR_k_IS_0_TO_7({
-                int i = furthest^k;
-                if (root[node->octnode].has_index(i)) {
-                    int j = root[node->octnode].position(i);
+                if (root[node->octnode].has_index(k)) {
+                    int j = root[node->octnode].position(k);
                     *new_node = *node;
                     new_node->depth++;
                     new_node->bound = _mm_slli_epi32(node->bound, 1);
-                    new_node->depth2 = node->depth2 + ((ddepth[i] + (1<<node->depth)) >> new_node->depth);
-                    if ((C^i)&DX) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dx);
-                    if ((C^i)&DY) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dy);
-                    if ((C^i)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dz);
+                    new_node->depth2 = node->depth2 + ((ddepth[k] + (1<<node->depth)) >> new_node->depth);
+                    if ((C^k)&DX) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dx);
+                    if ((C^k)&DY) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dy);
+                    if ((C^k)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dz);
                     if (new_node->inside_frustum()) {
                         count_oct++;
                         new_node->octnode = root[node->octnode].child[j];
-                        new_node->pos = _mm_add_epi32(node->pos, _mm_slli_epi32(DELTA[i], SCENE_DEPTH-new_node->depth));
                         new_node++;
                     }
                 }
             });
         } else {
             // Duplicate leaf node
-            FOR_k_IS_0_TO_6({
-                int i = furthest^k;
+            FOR_k_IS_0_TO_7({
                 *new_node = *node;
                 new_node->depth++;
                 new_node->bound = _mm_slli_epi32(node->bound, 1);
-                new_node->depth2 = node->depth2 + ((ddepth[i] + (1<<node->depth)) >> new_node->depth);
-                if ((C^i)&DX) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dx);
-                if ((C^i)&DY) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dy);
-                if ((C^i)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dz);
+                new_node->depth2 = node->depth2 + ((ddepth[k] + (1<<node->depth)) >> new_node->depth);
+                if ((C^k)&DX) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dx);
+                if ((C^k)&DY) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dy);
+                if ((C^k)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,new_node->dz);
                 if (new_node->inside_frustum()) {
                     count_oct++;
-                    new_node->pos = _mm_add_epi32(node->pos, _mm_slli_epi32(DELTA[i], SCENE_DEPTH-new_node->depth));
                     new_node++;
                 }
             });
@@ -303,15 +289,8 @@ static void traverse_quad(int max_n, SearchNode* begin, SearchNode* end) {
                         count_quad++;
                         if (new_node - end >= max_n) break;
                     } else {
-                        glm::dvec3 dpos(extract_epi32<0>(node->pos), extract_epi32<1>(node->pos), extract_epi32<2>(node->pos));
-                        double depth = glm::dot(dpos, look_dir);
-                        int32_t udepth(depth);
                         uint32_t color = (node->octnode < 0xff000000u) ? root[node->octnode].avgcolor : node->octnode;
-                        // Depth color.
-                        int32_t depth2 = node->depth2;
-                        if (udepth - depth2 < -8) color = 0xffff00ff;
-                        if (udepth - depth2 >  8) color = 0xffffff00;
-                        face.draw(new_node->quadnode, color, udepth); // Rendering
+                        face.draw(new_node->quadnode, color, node->depth2); // Rendering
                         break;
                     }
                 }
@@ -357,7 +336,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
 
     root = file->root;
     face.surf = surf;
-    look_dir = glm::dvec3(0,0,1) * orientation;
+    glm::dvec3 look_dir = glm::dvec3(0,0,1) * orientation;
     
     Timer t_prepare;
     // Prepare the occlusion quadtree
@@ -393,7 +372,6 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     node.octnode = 0;
     node.depth2 = -glm::dot(position, look_dir); // Depth2 computation has some rounding errors.
     node.depth = 0;
-    node.pos = _mm_set_epi32(0, -(int)position.z, -(int)position.y, -(int)position.x);
     node.bound = bounds[C];
     node.dx = _mm_sub_epi32(bounds[C^DX], bounds[C]);
     node.dy = _mm_sub_epi32(bounds[C^DY], bounds[C]);
