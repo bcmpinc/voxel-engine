@@ -92,7 +92,7 @@ template<> inline int extract_epi32<0>(__m128i a) {
     return _mm_cvtsi128_si32(a);
 }
 
-struct SearchNode {
+struct OctNode {
     /** The index of the quadnode that will be rendered to. It is assumed that it is not yet fully rendered. */
     int32_t quadnode;
     /** The index of the current octree node that is being rendered. For leaf nodes (and their 'childs') octnode will be a color and >= 0xff000000u. */
@@ -113,12 +113,12 @@ struct SearchNode {
     inline bool inside_frustum() const;
 };// __attribute__ ((aligned (128)));
 
-static inline bool operator<(const SearchNode& a, const SearchNode& b) {
+static inline bool operator<(const OctNode& a, const OctNode& b) {
     return a.depth2 < b.depth2;
 }
 
 /** Computes the sum max(dx,0)+max(dy,0)+max(dz,0). */
-void SearchNode::compute_frustum() {
+void OctNode::compute_frustum() {
     const __m128i nil = _mm_setzero_si128();
     frustum = nil;
 #ifdef __SSE4_1__    
@@ -133,13 +133,13 @@ void SearchNode::compute_frustum() {
 }
 
 /** Compute an estimate of the node size on screen. */
-int SearchNode::delta() const{
+int OctNode::delta() const{
     __m128i b = _mm_add_epi32(_mm_add_epi32(bound, dx), _mm_add_epi32(dy, dz));
     return extract_epi32<0>(_mm_add_epi32(b,_mm_srli_si128(b,4)));
 }
 
 /** Compute whether this node is still within the frustum. */
-bool SearchNode::inside_frustum() const{
+bool OctNode::inside_frustum() const{
     return !movemask_epi32(_mm_cmplt_epi32(bound, frustum));
 }
 
@@ -159,25 +159,16 @@ bool SearchNode::inside_frustum() const{
   {constexpr int k = 6; code} \
   {constexpr int k = 7; code} 
 
-#define FOR_k_IS_0_TO_6(code) \
-  {const int k = 0; code} \
-  {const int k = 1; code} \
-  {const int k = 2; code} \
-  {const int k = 3; code} \
-  {const int k = 4; code} \
-  {const int k = 5; code} \
-  {const int k = 6; code}
-  
-static SearchNode nodes[65536];
+static OctNode nodes[65536];
 static int prepare(int size){
     int fixed = 0;
     while (size > fixed && size<=4096-8) {
-        const SearchNode& __restrict node = nodes[fixed];
-        if (node.delta() >= 2<<SCENE_DEPTH) {
+        const OctNode& __restrict node = nodes[fixed];
+        if (node.delta() >= 1<<SCENE_DEPTH) {
             fixed++;
         } else if (node.octnode < 0xff000000) {
             // Traverse octree
-            SearchNode new_node(node);
+            OctNode new_node(node);
             new_node.depth++;
             FOR_k_IS_0_TO_7({
                 if (root[node.octnode].has_index(k)) {
@@ -207,13 +198,11 @@ static int prepare(int size){
 /** Core of the voxel rendering algorithm. 
  * @return true if quadtree node is rendered.
  */
-static void traverse_quad(int max_n, SearchNode* begin, SearchNode* end);
-
-static void traverse_oct(int max_n, SearchNode* begin, SearchNode* end){
+static void traverse(int max_n, OctNode* begin, OctNode* end){
     count++;
-    SearchNode* new_node=end;
-    SearchNode* node;
-    for (node=begin; node!=end && new_node-node <= 2*max_n; node++) {
+    OctNode* new_node=end;
+    OctNode* node;
+    for (node=begin; node!=end && new_node-node <= max_n; node++) {
         if (node->delta() >= 2<<SCENE_DEPTH) {
             *new_node = *node;
             new_node++;
@@ -256,20 +245,18 @@ static void traverse_oct(int max_n, SearchNode* begin, SearchNode* end){
             });
         }
     }
-    if (node != new_node) {
-        traverse_quad(max_n/2, node, new_node);
-    }
-}
+    if (node == new_node) return;
+    begin = node;
+    end = new_node;
 
-static void traverse_quad(int max_n, SearchNode* begin, SearchNode* end) {
     count++;
     std::sort(begin, end);
     // Traverse quadtree 
     int mask = face.children[begin->quadnode];
     FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
         if (mask&(1<<i)) {
-            SearchNode* new_node = end;
-            for (SearchNode* node=begin; node!=end; node++) {
+            OctNode* new_node = end;
+            for (OctNode* node=begin; node!=end; node++) {
                 assert(begin->quadnode == node->quadnode);
                 *new_node = *node;
                 __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(node->bound, _mm_shuffle_epi32(node->bound,0xb1)), 1);
@@ -287,7 +274,7 @@ static void traverse_quad(int max_n, SearchNode* begin, SearchNode* end) {
                     if (node->quadnode<quadtree::M) {
                         new_node++;
                         count_quad++;
-                        if (new_node - end >= max_n) break;
+                        if (new_node - end >= max_n/4) break;
                     } else {
                         uint32_t color = (node->octnode < 0xff000000u) ? root[node->octnode].avgcolor : node->octnode;
                         face.draw(new_node->quadnode, color, node->depth2); // Rendering
@@ -296,7 +283,7 @@ static void traverse_quad(int max_n, SearchNode* begin, SearchNode* end) {
                 }
             }
             if (end != new_node) {
-                traverse_oct(max_n, end, new_node);
+                traverse(max_n/2, end, new_node);
             }
         }
     });
@@ -367,7 +354,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
         }
     }
     
-    SearchNode node;
+    OctNode node;
     node.quadnode = -1;
     node.octnode = 0;
     node.depth2 = -glm::dot(position, look_dir); // Depth2 computation has some rounding errors.
@@ -379,7 +366,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     node.compute_frustum();
     nodes[0] = node;
     int size = prepare(1);
-    traverse_quad(8192, nodes, nodes+size);
+    traverse(8192, nodes, nodes+size);
     
     timer_query = t_query.elapsed();
 
