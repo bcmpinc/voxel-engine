@@ -41,7 +41,6 @@ constexpr static int make_mask(int a, int b, int c, int d) {
 }
 
 constexpr int quad_mask[8] = {
-    0,0,0,0,
     make_mask(1,0,0,1),
     make_mask(0,1,0,1),
     make_mask(1,0,1,0),
@@ -144,11 +143,11 @@ bool QuadNode::contains(const OctNode& a) const{
     return !movemask_epi32(_mm_cmplt_epi32(a.bound, frustum));
 }
 
-#define FOR_i_IS_4_TO_7(code) \
-  {constexpr int i = 4; code} \
-  {constexpr int i = 5; code} \
-  {constexpr int i = 6; code} \
-  {constexpr int i = 7; code} 
+#define FOR_i_IS_0_TO_3(code) \
+  {constexpr int i = 0; code} \
+  {constexpr int i = 1; code} \
+  {constexpr int i = 2; code} \
+  {constexpr int i = 3; code} 
 
 #define FOR_k_IS_0_TO_7(code) \
   {constexpr int k = 0; code} \
@@ -256,7 +255,7 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
     __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(quad.dx, _mm_shuffle_epi32(quad.dx,0xb1)), 1);
     __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(quad.dy, _mm_shuffle_epi32(quad.dy,0xb1)), 1);
     __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(quad.dz, _mm_shuffle_epi32(quad.dz,0xb1)), 1);
-    FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
+    FOR_i_IS_0_TO_3({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
         constexpr int new_mask = quad_mask[i];
         QuadNode new_quad(quad);
         new_quad.depth--;
