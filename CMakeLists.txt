@@ -32,8 +32,6 @@ add_target(engine LIBRARY SOURCE
     src/engine/octree_draw.cpp
     src/engine/pointset.h
     src/engine/pointset.cpp
-    src/engine/quadtree.h
-    src/engine/quadtree.cpp
     src/engine/surface.h
     src/engine/surface.cpp
     src/engine/timing.h

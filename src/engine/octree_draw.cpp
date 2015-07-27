@@ -22,7 +22,6 @@
 #include <string.h>
 #include <xmmintrin.h>
 
-#include "quadtree.h"
 #include "timing.h"
 #include "octree.h"
 
@@ -31,7 +30,7 @@
 using std::max;
 using std::min;
 
-static quadtree face;
+static surface face;
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
@@ -104,8 +103,8 @@ struct OctNode {
 };
 
 struct QuadNode {
-    /** The index of the quadnode that will be rendered to. It is assumed that it is not yet fully rendered. */
-    int32_t quadnode;
+    uint32_t x, y;
+    int32_t depth;
     /** Represent how this projection changes when traversing an edge to one of the other corners. */
     __m128i dx, dy, dz;
     /** Computed by `compute_frustum()`, a magic variable used for frustum occlusion. */
@@ -254,15 +253,16 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
     count++;
     std::sort(begin, end);
     // Traverse quadtree 
-    int mask = face.children[quad.quadnode];
     __m128i mid_dx = _mm_srai_epi32(_mm_sub_epi32(quad.dx, _mm_shuffle_epi32(quad.dx,0xb1)), 1);
     __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(quad.dy, _mm_shuffle_epi32(quad.dy,0xb1)), 1);
     __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(quad.dz, _mm_shuffle_epi32(quad.dz,0xb1)), 1);
     FOR_i_IS_4_TO_7({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
-        if (mask&(1<<i)) {
-            constexpr int new_mask = quad_mask[i];
-            QuadNode new_quad(quad);
-            new_quad.quadnode = new_quad.quadnode*4+i;
+        constexpr int new_mask = quad_mask[i];
+        QuadNode new_quad(quad);
+        new_quad.depth--;
+        if (i&1) new_quad.x += 1<<new_quad.depth;
+        if (i&2) new_quad.y += 1<<new_quad.depth;
+        if (new_quad.x < face.width && new_quad.y < face.height) {
             new_quad.dx = blend_epi32<new_mask>(mid_dx, new_quad.dx);
             new_quad.dy = blend_epi32<new_mask>(mid_dy, new_quad.dy);
             new_quad.dz = blend_epi32<new_mask>(mid_dz, new_quad.dz);
@@ -274,13 +274,13 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
                 __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(node->bound, _mm_shuffle_epi32(node->bound,0xb1)), 1);
                 new_node->bound = blend_epi32<new_mask>(mid_bound, node->bound);
                 if (new_quad.contains(*new_node)) { // frustum occlusion
-                    if (new_quad.quadnode<quadtree::N) {
+                    if (new_quad.depth > 0) {
                         new_node++;
                         count_quad++;
                         if (new_node - end >= max_n/4) break;
                     } else {
                         uint32_t color = (node->octnode < 0xff000000u) ? root[node->octnode].avgcolor : node->octnode;
-                        face.draw(new_quad.quadnode, color, node->depth2); // Rendering
+                        face.pixel(new_quad.x, new_quad.y, color, node->depth2); // Rendering
                         break;
                     }
                 }
@@ -301,23 +301,22 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
 void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 position, glm::dmat3 orientation) {
     Timer t_global;
     
-    double timer_prepare;
-    double timer_query;
-    
-    // Make sure that the quadtree is big enough that it can contain the rendered surface.
-    // If these checks fail, increase quadtree::dim in quadtree.h.
-    assert(quadtree::SIZE >= surf.width);
-    assert(quadtree::SIZE >= surf.height);
+    uint32_t quad_depth = 0;
+    uint32_t quad_size = 1;
+    while (quad_size < surf.width || quad_size < surf.height) {
+        quad_depth++;
+        quad_size = 1<<quad_depth;
+    }
     
     double quadtree_bounds[] = {
         view.left,
-       (view.left + (view.right -view.left)*(double)quadtree::SIZE/surf.width ),
-       (view.top  + (view.bottom-view.top )*(double)quadtree::SIZE/surf.height),
+       (view.left + (view.right -view.left)*(double)quad_size/surf.width ),
+       (view.top  + (view.bottom-view.top )*(double)quad_size/surf.height),
         view.top,
     };
-    // On the other hand, if quadtree::dim is too high, it can cause an overflow in the computation of bounds[].
-    // If these checks fail, decrease quadtree::dim in quadtree.h.
+
 #ifndef NDEBUG
+    // Check if the computed quadtree_bounds won't be able to cause an integer overflow.
     int overflow_limit = 0x3fffffff >> SCENE_DEPTH;
     for (int i=0; i<4; i++) {
         assert(-overflow_limit < quadtree_bounds[i] && quadtree_bounds[i] < overflow_limit);
@@ -325,15 +324,9 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
 #endif
 
     root = file->root;
-    face.surf = surf;
+    face = surf;
     glm::dvec3 look_dir = glm::dvec3(0,0,1) * orientation;
     
-    Timer t_prepare;
-    // Prepare the occlusion quadtree
-    face.build();
-    timer_prepare = t_prepare.elapsed();
-
-    Timer t_query;
     count_oct = count_quad = count = 0;
     // Do the actual rendering of the scene (i.e. execute the query).
     __m128i bounds[8];
@@ -359,7 +352,9 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     
     QuadNode quad;
     OctNode node;
-    quad.quadnode = -1;
+    quad.x = 0;
+    quad.y = 0;
+    quad.depth = quad_depth;
     node.octnode = 0;
     node.depth2 = -glm::dot(position, look_dir); // Depth2 computation has some rounding errors.
     node.depth = 0;
@@ -370,11 +365,9 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     quad.compute_frustum();
     nodes[0] = node;
     int size = prepare(quad, 1);
-    traverse(quad, 1<<14, nodes, nodes+size);
+    traverse(quad, 16<<quad_depth, nodes, nodes+size);
     
-    timer_query = t_query.elapsed();
-
-    std::printf("%7.2f | Prepare:%4.2f Query:%7.2f | Count:%10d Oct:%10d Quad:%10d | %4d\n", t_global.elapsed(), timer_prepare, timer_query, count, count_oct, count_quad, size);
+    std::printf("%7.2f | Count:%10d Oct:%10d Quad:%10d | %4d\n", t_global.elapsed(), count, count_oct, count_quad, size);
 }
 
 // kate: space-indent on; indent-width 4; mixedindent off; indent-mode cstyle; 

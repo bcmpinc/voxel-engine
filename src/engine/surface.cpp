@@ -91,6 +91,13 @@ void surface::pixel(uint32_t x, uint32_t y, uint32_t c) {
     data[i] = c;
 }
 
+void surface::pixel(uint32_t x, uint32_t y, uint32_t c, uint32_t d) {
+    assert(x<width && y<height);
+    int64_t i = x+y*(width);
+    data[i] = c;
+    if (depth) depth[i] = d;
+}
+
 void surface::clear(uint32_t c) {
     std::fill_n(data, width*height, c);
     if (depth) {

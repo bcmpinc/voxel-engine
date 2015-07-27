@@ -52,6 +52,11 @@ struct surface {
      * The pixel coordinates must be within bounds. */
     void pixel(uint32_t x, uint32_t y, uint32_t c);
 
+    /** Set the given pixel to the given color and depth. 
+     * The pixel coordinates must be within bounds. 
+     * The depth argument is ignored if this surface has no depth buffer. */
+    void pixel(uint32_t x, uint32_t y, uint32_t c, uint32_t depth);
+
     /** Fill the surface with the given color. */
     void clear(uint32_t c);
     
