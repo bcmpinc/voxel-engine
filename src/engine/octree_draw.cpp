@@ -108,6 +108,7 @@ struct QuadNode {
     __m128i dx, dy, dz;
     /** Computed by `compute_frustum()`, a magic variable used for frustum occlusion. */
     __m128i frustum;
+    
     inline void compute_frustum();
     inline int delta(const OctNode& a) const;
     inline bool contains(const OctNode& a) const;
@@ -256,22 +257,22 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
     __m128i mid_dy = _mm_srai_epi32(_mm_sub_epi32(quad.dy, _mm_shuffle_epi32(quad.dy,0xb1)), 1);
     __m128i mid_dz = _mm_srai_epi32(_mm_sub_epi32(quad.dz, _mm_shuffle_epi32(quad.dz,0xb1)), 1);
     FOR_i_IS_0_TO_3({ // Using a fixed size loop as blend_epi32 requires a compile-time constant as mask.
-        constexpr int new_mask = quad_mask[i];
+        constexpr int mask = quad_mask[i];
         QuadNode new_quad(quad);
         new_quad.depth--;
         if (i&1) new_quad.x += 1<<new_quad.depth;
         if (i&2) new_quad.y += 1<<new_quad.depth;
         if (new_quad.x < face.width && new_quad.y < face.height) {
-            new_quad.dx = blend_epi32<new_mask>(mid_dx, new_quad.dx);
-            new_quad.dy = blend_epi32<new_mask>(mid_dy, new_quad.dy);
-            new_quad.dz = blend_epi32<new_mask>(mid_dz, new_quad.dz);
+            new_quad.dx = blend_epi32<mask>(mid_dx, new_quad.dx);
+            new_quad.dy = blend_epi32<mask>(mid_dy, new_quad.dy);
+            new_quad.dz = blend_epi32<mask>(mid_dz, new_quad.dz);
             new_quad.compute_frustum();
             
             OctNode* new_node = end;
             for (OctNode* node=begin; node!=end; node++) {
                 *new_node = *node;
                 __m128i mid_bound = _mm_srai_epi32(_mm_sub_epi32(node->bound, _mm_shuffle_epi32(node->bound,0xb1)), 1);
-                new_node->bound = blend_epi32<new_mask>(mid_bound, node->bound);
+                new_node->bound = blend_epi32<mask>(mid_bound, node->bound);
                 if (new_quad.contains(*new_node)) { // frustum occlusion
                     if (new_quad.depth > 0) {
                         new_node++;
@@ -364,7 +365,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     quad.compute_frustum();
     nodes[0] = node;
     int size = prepare(quad, 1);
-    traverse(quad, 16<<quad_depth, nodes, nodes+size);
+    traverse(quad, 8<<quad_depth, nodes, nodes+size);
     
     std::printf("%7.2f | Count:%10d Oct:%10d Quad:%10d | %4d\n", t_global.elapsed(), count, count_oct, count_quad, size);
 }
