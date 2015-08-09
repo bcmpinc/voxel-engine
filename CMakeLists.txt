@@ -43,7 +43,7 @@ add_target(engine LIBRARY SOURCE
 
 # The targets
 add_target(voxel SOURCE
-    src/main.cpp
+    src/voxel.cpp
     src/events.cpp
     src/art_sdl.cpp
     src/capture.cpp
