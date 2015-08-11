@@ -1,15 +1,10 @@
 Voxel-Engine
 ============
-A CPU based sparse octree renderer.
+A CPU based sparse voxel octree renderer. 
 
-**Voxel-Engine** is a program that aims to render voxels, stored in a sparse octree, 
-interactively using mostly the CPU.
-
-The algorithm works by rendering the cubemap at the location of the camera. 
-First it is determined which parts of the cubemap are visible within the viewing pyramid. 
-(We have a pyramid instead of a frustum, because we do not have a near and far plane.) 
-Then the octree, containing the scene, is rendered to the visible parts of the 6 faces of the cubemap.
-The modified faces are then send to OpenGL and rendered as a cubemap.
+**Voxel-Engine** is a library that aims to render voxels, stored in a sparse octree, 
+interactively using the CPU. It does so by combining raytracing with a hierarchical Z-buffer.
+For more information, please read my voxel-engine blog at http://bcmpinc.wordpress.com.
 
 Dependencies
 ------------
@@ -18,8 +13,8 @@ Furthermore it uses the following libraries:
 
  - GLM: OpenGL Mathematics (mandatory)
  - SDL (required for the viewer)
- - libpng (allows the benchmark tool to export the images)
  - SDL_Image (for the heightmap converter)
+ - libpng (allows the benchmark tool to export the images)
  - ffmpeg (allows the viewer to save a movie, note that *libav* likely won't work)
  
 The **Voxel-Engine** itself does not use SDL_Image, but this library is used by some of the
