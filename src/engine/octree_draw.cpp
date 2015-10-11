@@ -210,28 +210,9 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
             continue;
         }
         // Recursion
-        if (node->octnode < 0xff000000) {
-            // Traverse octree
-            FOR_k_IS_0_TO_7({
-                if (root[node->octnode].has_index(k)) {
-                    int j = root[node->octnode].position(k);
-                    *new_node = *node;
-                    new_node->depth++;
-                    new_node->bound = _mm_slli_epi32(node->bound, 1);
-                    new_node->depth2 = node->depth2 + ((ddepth[k] + (1<<node->depth)) >> new_node->depth);
-                    if ((C^k)&DX) new_node->bound = _mm_add_epi32(new_node->bound,quad.dx);
-                    if ((C^k)&DY) new_node->bound = _mm_add_epi32(new_node->bound,quad.dy);
-                    if ((C^k)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,quad.dz);
-                    if (quad.contains(*new_node)) { // frustum occlusion
-                        count_oct++;
-                        new_node->octnode = root[node->octnode].child[j];
-                        new_node++;
-                    }
-                }
-            });
-        } else {
-            // Duplicate leaf node
-            FOR_k_IS_0_TO_7({
+        // Traverse octree / Duplicate leaf node
+        FOR_k_IS_0_TO_7({
+            if (node->octnode >= 0xff000000 || root[node->octnode].has_index(k)) {
                 *new_node = *node;
                 new_node->depth++;
                 new_node->bound = _mm_slli_epi32(node->bound, 1);
@@ -241,10 +222,13 @@ static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* e
                 if ((C^k)&DZ) new_node->bound = _mm_add_epi32(new_node->bound,quad.dz);
                 if (quad.contains(*new_node)) { // frustum occlusion
                     count_oct++;
+                    if (node->octnode < 0xff000000) {
+                        new_node->octnode = root[node->octnode].child[root[node->octnode].position(k)];
+                    }
                     new_node++;
                 }
-            });
-        }
+            }
+        });
     }
     if (node == new_node) return;
     begin = node;
@@ -365,7 +349,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     quad.compute_frustum();
     nodes[0] = node;
     int size = prepare(quad, 1);
-    traverse(quad, 8<<quad_depth, nodes, nodes+size);
+    traverse(quad, 16<<quad_depth, nodes, nodes+size);
     
     std::printf("%7.2f | Count:%10d Oct:%10d Quad:%10d | %4d\n", t_global.elapsed(), count, count_oct, count_quad, size);
 }
