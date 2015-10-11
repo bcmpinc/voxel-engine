@@ -28,6 +28,8 @@
 
 #include <sys/stat.h>
 
+#include <SDL2/SDL.h>
+
 #include "timing.h"
 #include "art.h"
 #include "octree.h"
@@ -118,6 +120,25 @@ int main(int argc, char ** argv) {
             flip_screen();
             if (j>=0) {
                 times[j] = t.elapsed();
+            }
+    
+            /* Check for events */
+            SDL_Event event;
+            while (SDL_PollEvent (&event)) {
+                switch (event.type) {
+                case SDL_KEYUP:
+                case SDL_KEYDOWN: {
+                    if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+                        return 1;
+                    }
+                    break;
+                }
+                case SDL_QUIT:
+                    return 1;
+                    break;
+                default:
+                    break;
+                }
             }
         }
         
