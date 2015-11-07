@@ -196,9 +196,7 @@ static int prepare(const QuadNode& quad, int size){
     return size;
 }
 
-/** Core of the voxel rendering algorithm. 
- * @return true if quadtree node is rendered.
- */
+/** Core of the voxel rendering algorithm. */
 static void traverse(const QuadNode& quad, int max_n, OctNode* begin, OctNode* end){
     count++;
     OctNode* new_node=end;
