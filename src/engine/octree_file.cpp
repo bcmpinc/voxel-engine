@@ -28,8 +28,6 @@
 #define static_assert(test, message) typedef char static_assert__##message[(test)?1:-1]
 static_assert(sizeof(octree)==4,octree_wrong_size);
 
-char * octree_available = NULL;
-
 octree_file::octree_file(const char* filename) : write(false) {
   fd = open(filename, O_RDONLY);
   if (fd == -1) {perror("Could not open file"); exit(1);}
