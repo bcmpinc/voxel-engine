@@ -38,7 +38,7 @@ find_package(PkgConfig QUIET)
 pkg_check_modules(PC_SDL2 QUIET sdl2)
 
 find_path(SDL2_INCLUDE_DIR
-  NAMES SDL.h
+  NAMES SDL_assert.h
   HINTS
     ${PC_SDL2_INCLUDEDIR}
     ${PC_SDL2_INCLUDE_DIRS}
