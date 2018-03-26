@@ -1,0 +1,21 @@
+language: cpp
+script: 
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=${target} ..
+  - make
+  
+matrix:
+  include:
+    - env: target=Debug
+    - env: target=Release
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - libsdl2-dev 
+      - libsdl2-image-dev 
+      - libpng-dev 
+      - libglm-dev
+      

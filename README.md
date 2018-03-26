@@ -12,8 +12,8 @@ The **Voxel-Engine** requires a POSIX compliant operating system. (Thus it does 
 Furthermore it uses the following libraries:
 
  - GLM: OpenGL Mathematics (mandatory)
- - SDL (required for the viewer)
- - SDL_Image (for the heightmap converter)
+ - SDL2 (required for the viewer)
+ - SDL2_Image (for the heightmap converter)
  - libpng (allows the benchmark tool to export the images)
  - ffmpeg (allows the viewer to save a movie, note that *libav* likely won't work)
  

@@ -8,6 +8,7 @@ vox
 *~
 .*
 !.gitignore
+!.travis.yml
 *.gz
 /img1
 /img2
