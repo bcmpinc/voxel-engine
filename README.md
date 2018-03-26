@@ -2,6 +2,11 @@ Voxel-Engine
 ============
 A CPU based sparse voxel octree renderer. 
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/402de1529d404abaa5958270972ad35a)](https://www.codacy.com/app/bcmpinc/voxel-engine?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=bcmpinc/voxel-engine&amp;utm_campaign=Badge_Grade)
+[![Build Status](https://travis-ci.org/bcmpinc/voxel-engine.svg?branch=master)](https://travis-ci.org/bcmpinc/voxel-engine)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+
 **Voxel-Engine** is a library that aims to render voxels, stored in a sparse octree, 
 interactively using the CPU. It does so by combining raytracing with a hierarchical Z-buffer.
 For more information, please read my voxel-engine blog at http://bcmpinc.wordpress.com.
