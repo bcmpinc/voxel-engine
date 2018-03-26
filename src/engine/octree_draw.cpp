@@ -124,13 +124,13 @@ static inline __m128i compute_frustum(__m128i dx, __m128i dy, __m128i dz) {
   {constexpr int k = 7; code} 
 
 #define FOR_k_IS_0_TO_6(code) \
-  {const int k = 0; code} \
-  {const int k = 1; code} \
-  {const int k = 2; code} \
-  {const int k = 3; code} \
-  {const int k = 4; code} \
-  {const int k = 5; code} \
-  {const int k = 6; code}
+  {constexpr int k = 0; code} \
+  {constexpr int k = 1; code} \
+  {constexpr int k = 2; code} \
+  {constexpr int k = 3; code} \
+  {constexpr int k = 4; code} \
+  {constexpr int k = 5; code} \
+  {constexpr int k = 6; code}
 
 /** Core of the voxel rendering algorithm.
  * @param quadnode the index of the quadnode that will be rendered to. It is assumed that it is not yet fully rendered.
@@ -267,7 +267,7 @@ void octree_draw(octree_file* file, surface surf, view_pane view, glm::dvec3 pos
     count_oct = count_quad = count = 0;
     // Do the actual rendering of the scene (i.e. execute the query).
     __m128i bounds[8];
-    int max_z=-1<<31;
+    int max_z = INT_MIN;
     for (int i=0; i<8; i++) {
         // Compute position of octree corners in camera-space
         __m128i vert = _mm_slli_epi32(DELTA[i], SCENE_DEPTH);
