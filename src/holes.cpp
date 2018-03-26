@@ -48,5 +48,6 @@ int main(int argc, char ** argv) {
     if (pos - start >= 8) {
         printf("%s segment from %d to %d.\n", empty?"null":"data", start, pos);
     }
+    fclose(f);
     return 0;
 }

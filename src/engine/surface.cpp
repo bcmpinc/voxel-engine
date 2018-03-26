@@ -42,7 +42,7 @@ surface::surface(uint32_t width, uint32_t height, uint32_t * data, uint32_t * de
 surface::~surface() {
     if (refs && --*refs == 0) {
         delete refs;
-        delete data;
+        delete[] data;
         delete depth;
     }
 }
