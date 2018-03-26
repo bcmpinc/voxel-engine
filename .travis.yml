@@ -2,13 +2,13 @@ language: cpp
 script: 
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=${target} ..
+  - cmake -DCMAKE_BUILD_TYPE=${TARGET} ..
   - make
   
 matrix:
   include:
-    - env: target=Debug
-    - env: target=Release
+    - env: TARGET=Debug
+    - env: TARGET=Release
 
 addons:
   apt:
