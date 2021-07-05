@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
-#include <xmmintrin.h>
+#include <smmintrin.h>
 
 #include "quadtree.h"
 #include "timing.h"

@@ -82,7 +82,7 @@ void surface::export_png(const char * out) {
     png_destroy_write_struct(&png_ptr, &info_ptr);
 }
 #else
-void export_png(const char * out) {}
+void surface::export_png(const char * out) {}
 #endif
 
 void surface::pixel(uint32_t x, uint32_t y, uint32_t c) {
