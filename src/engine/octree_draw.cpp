@@ -34,7 +34,7 @@ static quadtree face;
 static octree * root;
 static int C; //< The corner that is furthest away from the camera.
 static int count, count_oct, count_quad;
-static glm::dvec3 look_dir;
+static glm::dvec3 look_dir(0.0);
 
 constexpr static int make_mask(int a, int b, int c, int d) {
     return (a<<0)+(b<<1)+(c<<2)+(d<<3);

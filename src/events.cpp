@@ -35,7 +35,7 @@ class button {
     };
 };
 
-static glm::dmat4 view;
+static glm::dmat4 view(1.0);
     
 static bool button_state[button::STATES];
 static bool mousemove=false;
@@ -48,8 +48,8 @@ static const int DEADZONE = 1500;
 
 bool quit  = false;
 bool moves = true;
-glm::dmat3 orientation;
-glm::dvec3 position;
+glm::dmat3 orientation(1.0);
+glm::dvec3 position(0.0);
 
 static void attach_joysticks() {
     static int joy_error = SDL_InitSubSystem(SDL_INIT_JOYSTICK);

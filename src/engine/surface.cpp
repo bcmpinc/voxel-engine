@@ -43,7 +43,7 @@ surface::~surface() {
     if (refs && --*refs == 0) {
         delete refs;
         delete[] data;
-        delete depth;
+        delete[] depth;
     }
 }
 
